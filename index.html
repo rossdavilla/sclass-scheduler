@@ -323,24 +323,21 @@
       <section class="panel collapsible" data-panel="saveload">
         <button class="panel-head" type="button" aria-expanded="true"><span class="eyebrow">Save &amp; load — your Google Sheet</span><span class="collapse-ind" aria-hidden="true">▾</span></button>
         <div class="panel-body">
-          <p class="mini" style="margin:0 0 10px">Two ways: <b>Direct sync</b> (auto — needs the Apps Script setup + your own hosting) or <b>copy/paste</b> (works anywhere, incl. this shared link).</p>
+          <p class="mini" style="margin:0 0 10px">Two ways: <b>Direct sync</b> (one-click save/load to your Sheet on your hosted site) or <b>copy/paste</b> (works anywhere, incl. this shared link).</p>
 
           <div class="sync-box">
             <div class="eyebrow" style="font-size:10px">Direct sync</div>
-            <div class="field" style="margin-top:9px">
-              <label for="sync-url">Apps Script Web App URL</label>
-              <input type="text" id="sync-url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
-            </div>
-            <div class="field" style="margin-top:9px">
-              <label for="sync-secret">Secret <span class="mini">(only if you set one in the script)</span></label>
-              <input type="text" id="sync-secret" placeholder="Leave blank if none" autocomplete="off">
-            </div>
-            <div class="import-actions" style="margin-top:11px">
-              <button id="btn-sync-save" class="btn btn-soft" type="button">Save to sheet</button>
+            <p class="mini" style="margin:8px 0 11px">Saves straight to your Google Sheet — just press a button.</p>
+            <div class="import-actions">
+              <button id="btn-sync-save" class="btn btn-primary" type="button">Save to sheet</button>
               <button id="btn-sync-load" class="btn btn-soft" type="button">Load from sheet</button>
             </div>
             <div id="sync-status" class="mini" style="margin-top:9px"></div>
             <div id="sync-list" class="stack" hidden style="margin-top:9px"></div>
+            <details style="margin-top:10px">
+              <summary class="mini" style="cursor:pointer">Change Web App URL</summary>
+              <input type="text" id="sync-url" style="margin-top:6px" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+            </details>
           </div>
 
           <div class="eyebrow" style="font-size:10px;margin-top:18px">Copy / paste</div>
@@ -601,7 +598,8 @@
       return '<tr><td colspan="'+cols.length+'" style="'+TD+';text-align:center">'+head+body+"</td></tr>";
     }).join("");
     var tstyle="border-collapse:collapse;width:"+width+";table-layout:fixed"+(centered?";margin-left:auto;margin-right:auto":"");
-    parts.push('<table style="'+tstyle+'"><thead><tr>'+th+"</tr></thead><tbody>"+trs+extraTrs+"</tbody></table>");
+    var talign=centered?' align="center"':'';
+    parts.push('<table'+talign+' style="'+tstyle+'"><thead><tr>'+th+"</tr></thead><tbody>"+trs+extraTrs+"</tbody></table>");
     return parts.join("");
   }
 
@@ -775,7 +773,7 @@
     });
   }
 
-  function renderPreview(){ var inner=buildInner("8in", false); $("preview").innerHTML=inner || '<div class="empty">Fill in the schedule to preview the table.</div>'; }
+  function renderPreview(){ var inner=buildInner("8in", true); $("preview").innerHTML=inner || '<div class="empty">Fill in the schedule to preview the table.</div>'; }
   function autosize(el){ el.style.height="auto"; el.style.height=(el.scrollHeight)+"px"; }
 
   // ---------- toast / status ----------
@@ -786,7 +784,7 @@
   // ---------- copy / download ----------
   function ensureContent(width, centered){ var inner=buildInner(width, centered); if(!inner){ toast("Add class days and dates first."); return null; } return inner; }
   function copyTable(){
-    var inner=ensureContent("8in", false); if(!inner) return;
+    var inner=ensureContent("8in", true); if(!inner) return;
     var text=buildText();
     var done=function(ok){ toast(ok?"Table copied — paste into your Google Doc":"Couldn’t copy — try Download instead"); if(ok) status("Copied ✓"); };
     if(navigator.clipboard && window.ClipboardItem){
@@ -954,8 +952,8 @@
   }
 
   // ---------- direct sync (Google Apps Script Web App — works when you host this page yourself) ----------
-  function syncUrl(){ return $("sync-url").value.trim(); }
-  function syncSecret(){ return $("sync-secret").value.trim(); }
+  var DEFAULT_SYNC_URL="https://script.google.com/macros/s/AKfycbwrXr8L-NW-qpnKt0GP0UCnS7X0yXwl7DUkqLyI4ZHHRCZgwPRMGcMD_-z0meoNejJ8vA/exec";
+  function syncUrl(){ return ($("sync-url").value.trim()) || DEFAULT_SYNC_URL; }
   function syncStatus(msg, isErr){ var el=$("sync-status"); el.textContent=msg||""; el.style.color=isErr?"var(--danger)":"var(--muted)"; }
   function currentSaveName(){ return ($("save-name").value.trim()) || ((state.title||"Schedule")+(state.semester?" "+state.semester:"")); }
   function jsonp(url){
@@ -996,8 +994,8 @@
     if(!hasWork()){ syncStatus("Build a schedule first.", true); return; }
     var name=currentSaveName();
     syncStatus("Saving “"+name+"”…", false);
-    formPost(url, {action:"save", name:name, code:scheduleToCode(name), token:syncSecret()})
-      .then(function(){ return jsonpCall(url, {action:"list", token:syncSecret()}); })
+    formPost(url, {action:"save", name:name, code:scheduleToCode(name)})
+      .then(function(){ return jsonpCall(url, {action:"list"}); })
       .then(function(res){
         var ok=res && res.ok && (res.items||[]).some(function(it){ return it.name===name; });
         syncStatus(ok ? ("Saved “"+name+"” to your sheet ✓") : "Sent to the sheet — but couldn’t confirm it. Open the sheet to check.", !ok);
@@ -1007,7 +1005,7 @@
   function syncLoad(){
     var url=syncUrl(); if(!url){ syncStatus("Enter your Apps Script Web App URL first.", true); return; }
     syncStatus("Loading from your sheet…", false); $("sync-list").hidden=true;
-    jsonpCall(url, {action:"list", token:syncSecret()}).then(function(res){
+    jsonpCall(url, {action:"list"}).then(function(res){
       if(!res || !res.ok){ syncStatus("The sheet returned an error"+(res&&res.error?": "+res.error:"")+".", true); return; }
       var items=res.items||[];
       if(!items.length){ syncStatus("No saved schedules in the sheet yet — use “Save to sheet”.", false); return; }
@@ -1035,10 +1033,9 @@
       var lb=e.target.closest(".sync-load-btn");
       if(lb){ var it=items[+lb.getAttribute("data-i")]; var codes=parseCodes(it.code||""); if(codes[0]) applyLoadedSchedule(codes[0]); else toast("That saved row isn’t a valid schedule code."); return; }
       var db=e.target.closest(".sync-del-btn");
-      if(db){ var it2=items[+db.getAttribute("data-i")]; if(!confirm("Delete “"+it2.name+"” from the sheet?")) return; syncStatus("Deleting “"+it2.name+"”…", false); formPost(url, {action:"delete", name:it2.name, token:syncSecret()}).then(function(){ syncLoad(); }); }
+      if(db){ var it2=items[+db.getAttribute("data-i")]; if(!confirm("Delete “"+it2.name+"” from the sheet?")) return; syncStatus("Deleting “"+it2.name+"”…", false); formPost(url, {action:"delete", name:it2.name}).then(function(){ syncLoad(); }); }
     });
     $("sync-url").addEventListener("input", function(){ var u=loadUI(); u.syncUrl=$("sync-url").value; saveUI(u); });
-    $("sync-secret").addEventListener("input", function(){ var u=loadUI(); u.syncSecret=$("sync-secret").value; saveUI(u); });
 
     $("f-course").addEventListener("change", function(e){
       var v=e.target.value; armed=null;
@@ -1230,6 +1227,6 @@
   renderAll();
   bindInputs();
   initCollapsibles();
-  (function(){ var u=loadUI(); if(u.syncUrl) $("sync-url").value=u.syncUrl; if(u.syncSecret) $("sync-secret").value=u.syncSecret; })();
+  (function(){ var u=loadUI(); $("sync-url").value=u.syncUrl || DEFAULT_SYNC_URL; })();
 })();
 </script>
