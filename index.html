@@ -1,0 +1,1235 @@
+<title>Semester Grid — Class Schedule Generator</title>
+<style>
+  :root{
+    --font-serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    --paper:#eaeef4;--surface:#ffffff;--surface-2:#f4f6fb;--ink:#1a2231;--muted:#586274;--faint:#8792a4;
+    --line:#d8dfea;--line-strong:#c2cbdb;--accent:#2b4a8f;--accent-ink:#213e7d;--accent-soft:#e6ecf9;
+    --accent-contrast:#ffffff;--amber:#875313;--amber-bg:#faeed4;--amber-line:#e6cf9c;--good:#1f7a4d;--danger:#a3341f;
+    --radius:12px;--radius-sm:8px;--shadow:0 1px 2px rgba(20,30,55,.05),0 8px 24px rgba(20,30,55,.07);--bar-h:60px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#0f1219;--surface:#171b23;--surface-2:#1d222c;--ink:#e8ebf3;--muted:#a4aec0;--faint:#7a8698;
+      --line:#2a313d;--line-strong:#3a4351;--accent:#8aa1ee;--accent-ink:#a9bcff;--accent-soft:#212a3d;
+      --accent-contrast:#0c0f16;--amber:#e7ba6a;--amber-bg:#2c2414;--amber-line:#48391c;--good:#5cc48c;--danger:#e58a72;
+      --shadow:0 1px 2px rgba(0,0,0,.35),0 10px 30px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0f1219;--surface:#171b23;--surface-2:#1d222c;--ink:#e8ebf3;--muted:#a4aec0;--faint:#7a8698;
+    --line:#2a313d;--line-strong:#3a4351;--accent:#8aa1ee;--accent-ink:#a9bcff;--accent-soft:#212a3d;
+    --accent-contrast:#0c0f16;--amber:#e7ba6a;--amber-bg:#2c2414;--amber-line:#48391c;--good:#5cc48c;--danger:#e58a72;
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 10px 30px rgba(0,0,0,.4);
+  }
+  :root[data-theme="light"]{
+    --paper:#eaeef4;--surface:#ffffff;--surface-2:#f4f6fb;--ink:#1a2231;--muted:#586274;--faint:#8792a4;
+    --line:#d8dfea;--line-strong:#c2cbdb;--accent:#2b4a8f;--accent-ink:#213e7d;--accent-soft:#e6ecf9;
+    --accent-contrast:#ffffff;--amber:#875313;--amber-bg:#faeed4;--amber-line:#e6cf9c;--good:#1f7a4d;--danger:#a3341f;
+    --shadow:0 1px 2px rgba(20,30,55,.05),0 8px 24px rgba(20,30,55,.07);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0}
+  .page{font-family:var(--font-sans);color:var(--ink);
+    background:radial-gradient(1200px 600px at 12% -8%, color-mix(in srgb,var(--accent) 9%, transparent), transparent 60%),var(--paper);
+    min-height:100vh;padding:22px clamp(14px,3vw,34px) calc(var(--bar-h) + 34px);-webkit-font-smoothing:antialiased;}
+
+  .app-header{display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:1320px;margin:0 auto 20px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:13px}
+  .brand-mark{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(150deg,var(--accent),var(--accent-ink));color:#fff;box-shadow:var(--shadow);flex:none;}
+  .brand-mark svg{width:23px;height:23px;display:block}
+  .brand-name{font-family:var(--font-serif);font-size:21px;font-weight:600;letter-spacing:.1px;line-height:1.05}
+  .brand-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .header-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  #load-select{width:auto;min-width:180px}
+
+  .wrap{max-width:1320px;margin:0 auto;display:grid;grid-template-columns:minmax(340px,400px) 1fr;gap:20px;align-items:start}
+  @media (max-width:940px){ .wrap{grid-template-columns:1fr} }
+  .col{display:flex;flex-direction:column;gap:20px;min-width:0}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 18px 20px;}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--accent);}
+  .eyebrow-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+  .panel-head{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;padding:0;margin:0 0 4px;cursor:pointer;font:inherit;color:inherit;text-align:left}
+  .panel-head:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+  .panel-head .eyebrow{margin-right:auto}
+  .collapse-ind{color:var(--muted);font-size:11px;line-height:1;transition:transform .15s;flex:none}
+  .panel.collapsed .collapse-ind{transform:rotate(-90deg)}
+  .panel.collapsed .panel-head{margin-bottom:0}
+  .panel.collapsed .panel-body{display:none}
+  .hint{font-size:12.5px;color:var(--muted);line-height:1.5;margin:6px 0 14px}
+  .hint.tiny{margin:0}
+  .mini{font-size:11px;color:var(--faint)}
+
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:14px}
+  .field{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .field.wide{grid-column:1 / -1}
+  label{font-size:12px;font-weight:600;color:var(--ink)}
+  input[type=text],input[type=date],input[type=number],textarea,select{font-family:var(--font-sans);font-size:14px;color:var(--ink);background:var(--surface-2);
+    border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:9px 11px;width:100%;transition:border-color .15s,box-shadow .15s,background .15s;}
+  input::placeholder,textarea::placeholder{color:var(--faint)}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%, transparent);}
+  input[type=date],select{color-scheme:light dark}
+  select{cursor:pointer}
+
+  .days-block{margin-top:16px}
+  .day-toggles{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap}
+  .day-toggle{font-family:var(--font-sans);font-size:13px;font-weight:600;color:var(--muted);background:var(--surface-2);
+    border:1px solid var(--line-strong);border-radius:999px;padding:8px 13px;cursor:pointer;transition:all .14s;min-width:52px;}
+  .day-toggle:hover{border-color:var(--accent);color:var(--ink)}
+  .day-toggle.on{background:var(--accent);border-color:var(--accent);color:var(--accent-contrast);box-shadow:var(--shadow)}
+
+  .btn{font-family:var(--font-sans);font-size:13.5px;font-weight:600;border-radius:var(--radius-sm);padding:9px 15px;cursor:pointer;border:1px solid transparent;transition:all .14s;white-space:nowrap;}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btn-primary{background:var(--accent);color:var(--accent-contrast);border-color:var(--accent);box-shadow:var(--shadow)}
+  .btn-primary:hover{background:var(--accent-ink);border-color:var(--accent-ink)}
+  .btn-soft{background:var(--accent-soft);color:var(--accent-ink);border-color:transparent}
+  .btn-soft:hover{background:color-mix(in srgb,var(--accent-soft) 70%, var(--accent) 12%)}
+  .btn-ghost{background:transparent;color:var(--muted);border-color:var(--line-strong)}
+  .btn-ghost:hover{color:var(--ink);border-color:var(--accent)}
+  .btn.toggle{background:var(--surface-2);color:var(--muted);border:1px solid var(--line-strong)}
+  .btn.toggle:hover{border-color:var(--good);color:var(--ink)}
+  .btn.toggle.on{background:var(--good);color:#fff;border-color:var(--good)}
+  .btn-icon{background:transparent;border:1px solid var(--line-strong);color:var(--muted);border-radius:var(--radius-sm);width:34px;height:34px;cursor:pointer;display:grid;place-items:center;flex:none;transition:all .14s;font-size:16px;line-height:1}
+  .btn-icon:hover{color:var(--danger);border-color:var(--danger)}
+
+  .lec-help{font-size:12px;color:var(--muted);line-height:1.5;margin:8px 0 12px}
+  .lec-count{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .palette{display:flex;flex-wrap:wrap;gap:7px;max-height:288px;overflow:auto;padding:3px;margin:-3px}
+  .chip-btn{display:inline-flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:999px;
+    padding:6px 8px 6px 12px;font:inherit;font-size:12.5px;color:var(--ink);cursor:grab;transition:all .12s;max-width:100%;text-align:left}
+  .chip-btn:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+  .chip-btn:active{cursor:grabbing}
+  .chip-btn.dragging{opacity:.45}
+  .chip-btn.armed{border-color:var(--accent)!important;background:var(--accent-soft)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+  .chip-btn.used{opacity:.5}
+  .chip-btn.used .lec-name{text-decoration:line-through}
+  .lec-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+  .lec-days{font-family:var(--font-mono);font-size:10.5px;font-weight:600;color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 15%,transparent);padding:2px 6px;border-radius:999px;flex:none}
+  .chip-exam,.chip-review{padding:6px 14px}
+  .chip-exam{background:color-mix(in srgb,var(--danger) 9%, var(--surface-2));border-color:color-mix(in srgb,var(--danger) 42%, var(--line-strong))}
+  .chip-exam .lec-name{color:var(--danger);font-weight:700}
+  .chip-review{background:color-mix(in srgb,var(--good) 9%, var(--surface-2));border-color:color-mix(in srgb,var(--good) 42%, var(--line-strong))}
+  .chip-review .lec-name{color:var(--good);font-weight:700}
+  .palette-empty{font-size:13px;color:var(--muted);padding:16px;border:1.5px dashed var(--line-strong);border-radius:var(--radius-sm);text-align:center;background:var(--surface-2);line-height:1.5}
+  .lec-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center}
+  .assess-controls{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:10px 0 10px}
+  .assess-controls .field{flex:0 0 auto;width:auto;min-width:88px}
+  .assess-controls select{width:auto;min-width:76px}
+  .assess-toggles{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .import-box{margin-top:12px;padding:13px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2);display:flex;flex-direction:column;gap:10px}
+  .sync-box{border:1px solid var(--line);border-radius:var(--radius-sm);padding:13px;background:var(--surface-2)}
+  .import-box textarea{min-height:104px;font-family:var(--font-mono);font-size:12px;resize:vertical}
+  #load-code{min-height:68px;font-family:var(--font-mono);font-size:12px;resize:vertical}
+  .load-pick{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2);font-size:13px}
+  .load-pick b{font-weight:600}
+  .import-actions{display:flex;gap:8px}
+
+  .stack{display:flex;flex-direction:column;gap:9px}
+  .stack:empty{display:none}
+  .row-item{display:flex;gap:8px;align-items:center}
+  .row-item input[type=date]{flex:0 0 auto;width:auto}
+  .row-item input[type=number]{flex:0 0 auto}
+  .row-item .grow{flex:1;min-width:0}
+  .add-row{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap;align-items:center}
+  .add-row input[type=date]{flex:0 0 auto;width:auto}
+  .add-row input[type=text]{flex:1;min-width:120px}
+  .extra-item{display:flex;flex-direction:column;gap:7px;padding:11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2)}
+  .extra-item .extra-head{display:flex;gap:8px;align-items:center}
+  .extra-item textarea{min-height:38px;resize:vertical}
+
+  .summary{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .stat{display:inline-flex;align-items:baseline;gap:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12.5px;color:var(--muted);}
+  .stat b{font-family:var(--font-mono);font-size:14px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+  .stat.lec b{color:var(--accent)}
+  .stat.exam b{color:var(--danger)}
+  .stat.review b{color:var(--good)}
+  .stat.nc b{color:var(--amber)}
+  .stat.hint-stat{background:transparent;border-color:transparent;color:var(--muted);font-style:italic}
+
+  .grid-wrap{margin-top:14px}
+  .table-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius-sm)}
+  table.grid{border-collapse:collapse;width:100%;min-width:520px}
+  table.grid th,table.grid td{border:1px solid var(--line);vertical-align:top}
+  table.grid thead th{background:var(--surface-2);color:var(--ink);font-size:12px;font-weight:700;letter-spacing:.03em;text-align:center;padding:9px 8px;position:sticky;top:0;}
+  th.wk-head{width:34px;background:var(--surface-2);color:var(--faint);font-family:var(--font-mono);font-weight:600;font-size:11px;text-align:center;padding:8px 2px;font-variant-numeric:tabular-nums;}
+  td.cell{padding:8px 9px 9px;background:var(--surface);min-width:120px}
+  td.cell-empty{background:repeating-linear-gradient(135deg,transparent,transparent 7px,color-mix(in srgb,var(--line) 55%,transparent) 7px,color-mix(in srgb,var(--line) 55%,transparent) 8px);}
+  td.cell-nc{background:var(--amber-bg);border-color:var(--amber-line)}
+  .cell-top{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px}
+  .cell-date{font-family:var(--font-mono);font-size:12.5px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+  td.cell-nc .cell-date{color:var(--amber)}
+  .chip{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--amber);background:color-mix(in srgb,var(--amber) 16%,transparent);padding:2px 6px;border-radius:999px}
+  .cell-body{font-size:13px;line-height:1.4;padding:2px 3px;min-height:22px;white-space:pre-wrap;word-break:break-word}
+  .cell-hint{color:var(--faint);font-size:12px}
+  td.cell[draggable="true"]{cursor:grab}
+  td.cell[draggable="true"]:active{cursor:grabbing}
+  td.cell.dragging-cell{opacity:.4}
+  textarea.cell-edit{width:100%;background:var(--surface);border:1px solid var(--accent);border-radius:6px;padding:4px 5px;font:inherit;font-size:13px;line-height:1.4;resize:none;overflow:hidden;min-height:26px;display:block;color:var(--ink)}
+
+  body.dnd td.cell:not(.cell-empty):not(.cell-nc){outline:1.5px dashed color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:-3px}
+  body.armed td.cell:not(.cell-empty):not(.cell-nc){cursor:copy}
+  td.drop-hover{box-shadow:inset 0 0 0 2px var(--accent);background:var(--accent-soft)!important}
+
+  .empty{padding:34px 20px;text-align:center;color:var(--muted);font-size:14px;line-height:1.6;border:1.5px dashed var(--line-strong);border-radius:var(--radius-sm);background:var(--surface-2)}
+  .empty b{color:var(--ink)}
+  .warnings{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+  .warn{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:var(--radius-sm);padding:8px 11px;line-height:1.45}
+  .warn svg{flex:none;margin-top:1px}
+
+  .preview{margin-top:14px;background:#ffffff;color:#111;border:1px solid var(--line);border-radius:var(--radius-sm);padding:24px;overflow-x:auto}
+  .preview .empty{background:#f6f6f6;color:#555;border-color:#ddd}
+
+  .action-bar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:saturate(1.4) blur(10px);border-top:1px solid var(--line);}
+  .action-inner{max-width:1320px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:11px clamp(14px,3vw,34px);flex-wrap:wrap}
+  .dl-group{display:flex;gap:8px}
+  .action-inner .grow{flex:1}
+  .status-note{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+  .toast{position:fixed;left:50%;bottom:calc(var(--bar-h) + 18px);transform:translateX(-50%) translateY(14px);background:var(--ink);color:var(--surface);font-size:13.5px;font-weight:500;padding:11px 18px;border-radius:999px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;max-width:88vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="page">
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4.5" width="18" height="16" rx="2.2"/><path d="M3 9h18"/><path d="M8 3v3M16 3v3"/><path d="M9 13h2M9 16.5h2M14 13h2M14 16.5h2"/>
+        </svg>
+      </span>
+      <div>
+        <div class="brand-name">Semester Grid</div>
+        <div class="brand-sub">Build a class schedule table for Google Docs</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <select id="load-select" aria-label="Load a saved schedule"></select>
+      <button id="btn-clear" class="btn btn-ghost" type="button">Clear schedule</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="col col-setup">
+      <section class="panel collapsible" data-panel="course">
+        <button class="panel-head" type="button" aria-expanded="true"><span class="eyebrow">Course</span><span class="collapse-ind" aria-hidden="true">▾</span></button>
+        <div class="panel-body">
+          <div class="field-grid">
+            <div class="field wide">
+              <label for="f-course">Class</label>
+              <select id="f-course"></select>
+            </div>
+            <div class="field wide">
+              <label for="f-title">Schedule title</label>
+              <input type="text" id="f-title" placeholder="e.g. PSY175 - Human Sexuality" autocomplete="off">
+              <span class="mini">Heading shown above the table — edit freely.</span>
+            </div>
+            <div class="field wide">
+              <label for="f-sem">Semester</label>
+              <input type="text" id="f-sem" placeholder="e.g. Fall 2026" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="f-start">First class day</label>
+              <input type="date" id="f-start">
+            </div>
+            <div class="field">
+              <label for="f-end">Last class day</label>
+              <input type="date" id="f-end">
+            </div>
+          </div>
+          <div class="days-block">
+            <label>Class days</label>
+            <div id="day-toggles" class="day-toggles"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel collapsible" data-panel="noclass">
+        <button class="panel-head" type="button" aria-expanded="true"><span class="eyebrow">No-class days</span><span class="collapse-ind" aria-hidden="true">▾</span></button>
+        <div class="panel-body">
+          <p class="hint">Holidays and breaks. Matching cells show <b>No Class (label)</b>. Turn on <b>Multiple days</b> for a break like Thanksgiving or Spring Recess, and it marks that many consecutive class days off. Adding one shifts your lectures down automatically.</p>
+          <div id="noclass-list" class="stack"></div>
+          <div class="add-row">
+            <input type="date" id="nc-date" aria-label="No-class date">
+            <input type="text" id="nc-label" placeholder="Label — e.g. Labor Day" aria-label="No-class label" autocomplete="off">
+            <button id="nc-multi" class="btn toggle" type="button" aria-pressed="false" title="Mark several consecutive class days off">Multiple days</button>
+            <input type="number" id="nc-count" min="2" max="20" value="2" style="width:66px;display:none" aria-label="Number of class days off">
+            <button id="nc-add" class="btn btn-soft" type="button">Add</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel collapsible" data-panel="exams">
+        <button class="panel-head" type="button" aria-expanded="true"><span class="eyebrow">Exams &amp; reviews</span><span class="collapse-ind" aria-hidden="true">▾</span></button>
+        <div class="panel-body">
+          <p class="lec-help">Generate exam chips, then drag them onto the calendar like lectures.</p>
+          <div class="assess-controls">
+            <div class="field">
+              <label for="exam-count">Exams</label>
+              <select id="exam-count">
+                <option>1</option><option>2</option><option>3</option><option>4</option>
+                <option>5</option><option>6</option><option>7</option><option>8</option>
+              </select>
+            </div>
+            <button id="btn-gen-assess" class="btn btn-soft" type="button">Generate</button>
+          </div>
+          <div class="assess-toggles">
+            <button id="btn-reviews" class="btn toggle" type="button" aria-pressed="false">Review sessions before exams?</button>
+            <button id="btn-reminders" class="btn toggle" type="button" aria-pressed="false" title="Adds “(Chapter quizzes due night before)” under each exam">Chapter quiz reminders</button>
+          </div>
+          <div id="assess-palette" class="palette"></div>
+        </div>
+      </section>
+
+      <section class="panel collapsible" data-panel="lectures">
+        <button class="panel-head" type="button" aria-expanded="true"><span class="eyebrow">Lectures</span><span id="lec-count" class="lec-count"></span><span class="collapse-ind" aria-hidden="true">▾</span></button>
+        <div class="panel-body">
+          <p class="lec-help">Drag a lecture onto a day — it fills that many class days (the number on each chip), skipping no-class days. Or tap a lecture, then tap a slot.</p>
+          <div id="palette" class="palette"></div>
+          <div class="lec-actions">
+            <button id="btn-autofill" class="btn btn-soft" type="button">Auto-fill in order</button>
+            <button id="btn-import" class="btn btn-ghost" type="button">Update from sheet</button>
+          </div>
+          <div id="import-box" class="import-box" hidden>
+            <div class="field">
+              <label for="imp-name">Course name (sheet tab)</label>
+              <input type="text" id="imp-name" placeholder="e.g. PSY175" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="imp-data">Paste rows — Order, Lecture, Days</label>
+              <textarea id="imp-data" placeholder="Select the Order / Lecture / Days cells in your Google Sheet, copy, and paste here."></textarea>
+              <span class="mini">Header row is fine — it's skipped. Copying straight from the sheet keeps names with commas intact.</span>
+            </div>
+            <div class="import-actions">
+              <button id="imp-save" class="btn btn-primary" type="button">Save lectures</button>
+              <button id="imp-cancel" class="btn btn-ghost" type="button">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel collapsible" data-panel="extras">
+        <button class="panel-head" type="button" aria-expanded="true"><span class="eyebrow">Extra rows</span><span class="hint tiny">optional</span><span class="collapse-ind" aria-hidden="true">▾</span></button>
+        <div class="panel-body">
+          <p class="hint">Full-width rows appended after the grid — e.g. a final or makeup exam outside the weekly pattern.</p>
+          <div id="extras-list" class="stack"></div>
+          <button id="extra-add" class="btn btn-soft" type="button" style="margin-top:11px">Add extra row</button>
+        </div>
+      </section>
+
+      <section class="panel collapsible" data-panel="saveload">
+        <button class="panel-head" type="button" aria-expanded="true"><span class="eyebrow">Save &amp; load — your Google Sheet</span><span class="collapse-ind" aria-hidden="true">▾</span></button>
+        <div class="panel-body">
+          <p class="mini" style="margin:0 0 10px">Two ways: <b>Direct sync</b> (auto — needs the Apps Script setup + your own hosting) or <b>copy/paste</b> (works anywhere, incl. this shared link).</p>
+
+          <div class="sync-box">
+            <div class="eyebrow" style="font-size:10px">Direct sync</div>
+            <div class="field" style="margin-top:9px">
+              <label for="sync-url">Apps Script Web App URL</label>
+              <input type="text" id="sync-url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+            </div>
+            <div class="field" style="margin-top:9px">
+              <label for="sync-secret">Secret <span class="mini">(only if you set one in the script)</span></label>
+              <input type="text" id="sync-secret" placeholder="Leave blank if none" autocomplete="off">
+            </div>
+            <div class="import-actions" style="margin-top:11px">
+              <button id="btn-sync-save" class="btn btn-soft" type="button">Save to sheet</button>
+              <button id="btn-sync-load" class="btn btn-soft" type="button">Load from sheet</button>
+            </div>
+            <div id="sync-status" class="mini" style="margin-top:9px"></div>
+            <div id="sync-list" class="stack" hidden style="margin-top:9px"></div>
+          </div>
+
+          <div class="eyebrow" style="font-size:10px;margin-top:18px">Copy / paste</div>
+          <p class="hint" style="margin-top:8px">Save the current schedule as a code, then paste it as a row into a tab of your Class Schedules sheet (a <b>Name</b> and a <b>Code</b> column). Reload it anytime by pasting the row back here.</p>
+          <div class="field">
+            <label for="save-name">Save name</label>
+            <div class="add-row">
+              <input type="text" id="save-name" class="grow" placeholder="e.g. PSY175 Fall 2027" autocomplete="off">
+              <button id="btn-save-code" class="btn btn-soft" type="button">Copy save code</button>
+            </div>
+          </div>
+          <div class="field" style="margin-top:12px">
+            <label for="load-code">Load — paste a saved row or code from your sheet</label>
+            <textarea id="load-code" placeholder="Paste the row (or just the code cell) you copied from your Google Sheet"></textarea>
+            <div class="import-actions"><button id="btn-load-code" class="btn btn-primary" type="button">Load schedule</button></div>
+            <div id="load-picker" class="stack" hidden style="margin-top:4px"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="col col-output">
+      <section class="panel">
+        <div class="eyebrow-row">
+          <div class="eyebrow">Schedule</div>
+          <div id="summary" class="summary"></div>
+        </div>
+        <div id="grid-wrap" class="grid-wrap"></div>
+      </section>
+
+      <section id="preview-panel" class="panel" hidden>
+        <div class="eyebrow">Preview — exactly what gets pasted</div>
+        <div id="preview" class="preview"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="action-bar">
+  <div class="action-inner">
+    <button id="btn-copy" class="btn btn-primary" type="button">Copy table</button>
+    <div class="dl-group">
+      <button id="btn-doc" class="btn btn-soft" type="button">Download .doc</button>
+      <button id="btn-html" class="btn btn-soft" type="button">Download .html</button>
+    </div>
+    <button id="btn-preview" class="btn btn-ghost" type="button">Show preview</button>
+    <div class="grow"></div>
+    <div id="status" class="status-note"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- lecture library (baked from the Google Sheet "Class Schedules") ----------
+  var BASE_COURSES={
+    "PSY157":[["Intro to Relationships",1],["Research Methods",1],["Attraction",3],["Social Cognition",3],["Communication",4],["Interdependence",3],["Friendship",2],["Love",4],["Sexuality",3],["Stressess & Strains",3],["Conflict",2],["Power & Violence",2],["Dissolution & Loss",2],["Maintaining & Repairing Relationships",2],["Biochemistry of Love",1]],
+    "PSY175":[["Intro to Human Sexuality",1],["Female Sexual Anatomy",3],["Male Sexual Anatomy",2],["Sex & Gender",2],["Movie on Intersex Identities",1],["Fertility",2],["Contraception",1],["Conception, Pregnancy & Childbirth",2],["Sexual Attraction, Arousal, & Response",4],["Sexual Behavior",3],["Childhood Sexual Development",2],["Adult Sexual Development",2],["Sexual Relationships",3],["Sexual Orientation & Gender Identity",2],["Kinks & Paraphilias",2],["Pornography & Sex Work",2],["Guest Speaker",1],["History of Sex",1],["Biochemistry of Love",1]],
+    "PSY170":[["Intro to I/O Psychology",1],["Preemployment Planning",5],["Assessing & Selecting Employees",2],["Motivation",4],["Positive Attitudes & Behavior",2],["Worker Stress",3],["Communication",3],["Socialization & Working in Groups",2],["Decision Making in Groups",2],["Influence, Power & Politics",1],["Leadership",2],["Persuasion",3],["Careers in I/O Psychology",1],["Future of I/O Psychology",1],["Preparing for Grad School",2],["Guest Speaker",1]],
+    "PSY001":[["Intro to Psychology",1],["Methods",1],["Biology & Neuroscience",3],["Nature v Nurture",2],["States of Consciousness",1],["Development",2],["Sensation & Perception",2],["Learning",2],["Memory",2],["Emotion",2],["Personality",2],["Psychological Disorders",2],["Psychological Treatments",2],["Gender & Sexuality",2]],
+    "PSY015":[["Intro to Research Methods",1],["Lab - Getting Started",1],["Communicating Science",1],["Lab - Descriptives & Graphs",1],["The Scientific Enterprise",1],["Lab - One-sample t-test",1],["Conducting Ethical Research",1],["Observation",1],["Lab - Chi-square",1],["Inferential Statistics",1],["Independent Groups",1],["Lab - Independent-samples t-test",1],["Repeated Measures",1],["Lab - Paired-samples T-test",1],["Conducting Experiments",1],["Lab - Review of Group Differences",1],["Surveys",1],["Lab - Reliability Analysis",1],["Measurement",1],["Lab - Factor Analysis",1],["Descriptive Statistics",1],["Lab - Correlation & Regression",1],["Multiple Regression",1],["Lab - Survey Analysis Review",1],["Complex Experimental Designs",1],["Lab - ANOVA (Part 1)",1],["Single-case Designs & Quasi-experiments",1],["Lab - ANOVA (Part 2)",1],["Careers in Psychology",1]]
+  };
+  var BASE_ORDER=["PSY157","PSY175","PSY170","PSY001","PSY015"];
+
+  // ---------- past-semester schedules (parsed from the PSY175 Google Docs) ----------
+  var EXAMPLE_SCHEDULES={"psy001-summer-2025":{"course":"PSY001","title":"PSY1 - Introduction to Psychology","semester":"Summer 2025","days":{"1":true,"2":true,"3":true,"4":true},"start":"2025-07-07","end":"2025-08-14","examCount":4,"reviewsBeforeExams":false,"noClass":[],"extras":[],"topics":{"2025-07-07":"What is Psychology","2025-07-08":"Research Methods","2025-07-09":"Biology & Neuroscience","2025-07-10":"Biology & Neuroscience","2025-07-14":"Nature v. Nurture","2025-07-15":"Exam 1","2025-07-16":"Development","2025-07-17":"Development","2025-07-21":"Sensation & Perception","2025-07-22":"Sensation & Perception","2025-07-23":"Exam 2","2025-07-24":"Learning","2025-07-28":"Learning","2025-07-29":"Memory","2025-07-30":"Motivation & Emotion","2025-07-31":"Motivation & Emotion","2025-08-04":"Motivation & Emotion","2025-08-05":"Exam 3","2025-08-06":"Personality","2025-08-07":"Personality","2025-08-11":"Psychological Disorders","2025-08-12":"Psychological Disorders","2025-08-13":"Treatment of Psychological Disorders","2025-08-14":"Exam 4"},"label":"PSY001 — Summer 2025"},"psy157-fall-2025":{"course":"PSY157","title":"PSY157 - Personal Relationships","semester":"Fall 2025","days":{"1":true,"3":true,"5":true},"start":"2025-08-27","end":"2025-12-12","examCount":4,"reviewsBeforeExams":true,"noClass":[{"date":"2025-09-01","label":"Labor Day","days":1},{"date":"2025-10-31","label":"Happy Halloween!","days":1},{"date":"2025-11-24","label":"Thanksgiving","days":1},{"date":"2025-11-26","label":"Thanksgiving","days":1},{"date":"2025-11-28","label":"Thanksgiving","days":1}],"extras":[{"heading":"Dec 18 (Thursday) @ 11:30 am","content":"Makeup Exam (for students who missed a previous exam)"}],"topics":{"2025-08-27":"Introduction to Personal Relationships","2025-08-29":"Learning About Class Resources","2025-09-03":"Research Methods","2025-09-05":"Attraction\nTop Hat Syllabus Due","2025-09-08":"Attraction","2025-09-10":"Attraction","2025-09-12":"Attraction","2025-09-15":"Review 1","2025-09-17":"Exam 1\n(Chapter quizzes due night before)","2025-09-19":"Communication","2025-09-22":"Communication","2025-09-24":"Communication","2025-09-26":"Guest Speaker","2025-09-29":"Social Cognition","2025-10-01":"Social Cognition","2025-10-03":"Social Cognition","2025-10-06":"Friendship","2025-10-08":"Friendship","2025-10-10":"Review 2","2025-10-13":"Exam 2\n(Chapter quizzes due night before)","2025-10-15":"Interdependence","2025-10-17":"Interdependence","2025-10-20":"Interdependence","2025-10-22":"Love","2025-10-24":"Love","2025-10-27":"Love","2025-10-29":"Love","2025-11-03":"Sexuality","2025-11-05":"Sexuality","2025-11-07":"Sexuality","2025-11-10":"Review 3","2025-11-12":"Exam 3\n(Chapter quizzes due night before)","2025-11-14":"Stresses & Strains","2025-11-17":"Stresses & Strains","2025-11-19":"Stresses & Strains","2025-11-21":"Guest Speaker","2025-12-01":"Dissolution & Loss","2025-12-03":"Dissolution & Loss","2025-12-05":"Maintaining & Repairing Relationships","2025-12-08":"Maintaining & Repairing Relationships","2025-12-10":"Review 4","2025-12-12":"Exam 4\n(Chapter quizzes due night before)"},"label":"PSY157 — Fall 2025"},"psy157-spring-2026":{"course":"PSY157","title":"PSY157 - Personal Relationships","semester":"Spring 2026","days":{"1":true,"3":true,"5":true},"start":"2026-01-21","end":"2026-05-08","examCount":4,"reviewsBeforeExams":true,"noClass":[{"date":"2026-02-16","label":"Presidents Day","days":1},{"date":"2026-03-23","label":"Spring Recess","days":1},{"date":"2026-03-25","label":"Spring Recess","days":1},{"date":"2026-03-27","label":"Spring Recess","days":1}],"extras":[{"heading":"May 11 (Monday) @ 3:00pm in COB2 Rm. 170","content":"Makeup Exam (for students who missed a previous exam)"}],"topics":{"2026-01-21":"Introduction to Personal Relationships","2026-01-23":"Learning About Class Resources","2026-01-26":"Research Methods","2026-01-28":"Attraction","2026-01-30":"Attraction\nTop Hat Syllabus Due","2026-02-02":"Attraction","2026-02-04":"Attraction","2026-02-06":"How to Study for PSY157\nReview 1","2026-02-09":"Exam 1\n(Chapter quizzes due night before)","2026-02-11":"Communication","2026-02-13":"Guest Speaker","2026-02-18":"Communication","2026-02-20":"Communication","2026-02-23":"Communication","2026-02-25":"Social Cognition","2026-02-27":"Social Cognition","2026-03-02":"Social Cognition","2026-03-04":"Friendship","2026-03-06":"Friendship","2026-03-09":"Review 2","2026-03-11":"Exam 2\n(Chapter quizzes due night before)","2026-03-13":"Interdependence","2026-03-16":"Interdependence","2026-03-18":"Interdependence","2026-03-20":"Love","2026-03-30":"Love","2026-04-01":"Love","2026-04-03":"Love","2026-04-06":"Sexuality","2026-04-08":"Sexuality","2026-04-10":"Sexuality","2026-04-13":"Review 3","2026-04-15":"Exam 3\n(Chapter quizzes due night before)","2026-04-17":"Stresses & Strains","2026-04-20":"Stresses & Strains","2026-04-22":"Stresses & Strains","2026-04-24":"Power & Violence","2026-04-27":"Dissolution & Loss","2026-04-29":"Dissolution & Loss","2026-05-01":"Maintaining & Repairing Relationships","2026-05-04":"Maintaining & Repairing Relationships","2026-05-06":"Review 4","2026-05-08":"Exam 4\n(Chapter quizzes due night before)"},"label":"PSY157 — Spring 2026"},"psy170-fall-2025":{"course":"PSY170","title":"PSY170 - Industrial/Organizational Psychology","semester":"Fall 2025","days":{"1":true,"3":true,"5":true},"start":"2025-08-27","end":"2025-12-12","examCount":4,"reviewsBeforeExams":true,"noClass":[{"date":"2025-09-01","label":"Labor Day","days":1},{"date":"2025-10-31","label":"Happy Halloween!","days":1},{"date":"2025-11-24","label":"Thanksgiving","days":1},{"date":"2025-11-26","label":"Thanksgiving","days":1},{"date":"2025-11-28","label":"Thanksgiving","days":1}],"extras":[{"heading":"Dec 18 (Thursday) @ 3:00pm","content":"Makeup Exam (for students who missed a previous exam)"}],"topics":{"2025-08-27":"Introduction to I/O","2025-08-29":"Learning About Class Resources","2025-09-03":"Pre-employment Planning","2025-09-05":"Pre-employment Planning\nTop Hat Syllabus Due","2025-09-08":"Pre-employment Planning","2025-09-10":"Pre-employment Planning","2025-09-12":"Assessing & Selecting Employees","2025-09-15":"Assessing & Selecting Employees","2025-09-17":"Review 1","2025-09-19":"Exam 1\n(Chapter quizzes due night before)","2025-09-22":"Exploring O*Net Activity","2025-09-24":"Motivation","2025-09-26":"Motivation","2025-09-29":"Motivation","2025-10-01":"Motivation","2025-10-03":"Positive Attitudes & Behavior","2025-10-06":"Positive Attitudes & Behavior","2025-10-08":"Worker Stress & Burnout","2025-10-10":"Worker Stress & Burnout","2025-10-13":"Worker Stress & Burnout","2025-10-15":"Review 2","2025-10-17":"Exam 2\n(Chapter quizzes due night before)","2025-10-20":"Socialization & Working in Groups","2025-10-22":"Socialization & Working in Groups","2025-10-24":"Decision Making in Groups","2025-10-27":"Decision Making in Groups","2025-10-29":"Communication","2025-11-03":"Communication","2025-11-05":"Communication","2025-11-07":"Review 3","2025-11-10":"Exam 3\n(Chapter quizzes due night before)","2025-11-12":"Persuasion","2025-11-14":"Persuasion","2025-11-17":"Persuasion","2025-11-19":"Leadership","2025-11-21":"Leadership","2025-12-01":"Careers in I/O Psychology","2025-12-03":"Preparing for Grad School","2025-12-05":"Preparing for Grad School","2025-12-08":"Future of I/O Psychology","2025-12-10":"Review 4","2025-12-12":"Exam 4\n(Chapter quizzes due night before)"},"label":"PSY170 — Fall 2025"},"psy170-spring-2026":{"course":"PSY170","title":"PSY170 - Industrial/Organizational Psychology","semester":"Spring 2026","days":{"1":true,"3":true,"5":true},"start":"2026-01-21","end":"2026-05-08","examCount":4,"reviewsBeforeExams":true,"noClass":[{"date":"2026-02-16","label":"Presidents’ Day","days":1},{"date":"2026-03-23","label":"Spring Recess","days":1},{"date":"2026-03-25","label":"Spring Recess","days":1},{"date":"2026-03-27","label":"Spring Recess","days":1}],"extras":[{"heading":"May 11 (Monday) @ 3:00pm","content":"Makeup Exam (for students who missed a previous exam)"}],"topics":{"2026-01-21":"Introduction to I/O","2026-01-23":"Learning About Class Resources","2026-01-26":"Pre-employment Planning","2026-01-28":"Class Activity: Exploring O*Net","2026-01-30":"Pre-employment Planning\nTop Hat Syllabus Due","2026-02-02":"Pre-employment Planning","2026-02-04":"Pre-employment Planning","2026-02-06":"Assessing & Selecting Employees","2026-02-09":"Assessing & Selecting Employees","2026-02-11":"Review 1","2026-02-13":"Exam 1\n(Chapter quizzes due night before)","2026-02-18":"Guest Speaker","2026-02-20":"Motivation","2026-02-23":"Motivation","2026-02-25":"Motivation","2026-02-27":"Activity: Goal Implementation","2026-03-02":"Positive Attitudes & Behavior","2026-03-04":"Positive Attitudes & Behavior","2026-03-06":"Worker Stress & Burnout","2026-03-09":"Worker Stress & Burnout","2026-03-11":"Worker Stress & Burnout","2026-03-13":"Review 2","2026-03-16":"Exam 2\n(Chapter quizzes due night before)","2026-03-18":"Socialization & Working in Groups","2026-03-20":"Socialization & Working in Groups","2026-03-30":"Decision Making in Groups","2026-04-01":"Decision Making in Groups","2026-04-03":"Leadership","2026-04-06":"Leadership","2026-04-08":"Review 3","2026-04-10":"Exam 3\n(Chapter quizzes due night before)","2026-04-13":"Communication","2026-04-15":"Communication","2026-04-17":"Communication","2026-04-20":"Persuasion","2026-04-22":"Persuasion","2026-04-24":"Persuasion","2026-04-27":"Guest Speaker","2026-04-29":"Preparing for Grad School","2026-05-01":"Careers in I/O Psychology","2026-05-04":"Review 4","2026-05-06":"Exam 4\n(Chapter quizzes due night before)","2026-05-08":"Class Activity: Applying I/O to College"},"label":"PSY170 — Spring 2026"},"psy175-fall-2026":{"course":"PSY175","title":"PSY175 - Human Sexuality","semester":"Fall 2026","days":{"1":true,"3":true,"5":true},"start":"2026-08-26","end":"2026-12-11","examCount":5,"reviewsBeforeExams":true,"noClass":[{"date":"2026-09-07","label":"Labor Day","days":1},{"date":"2026-11-11","label":"Veteran’s Day","days":1},{"date":"2026-11-23","label":"Thanksgiving","days":1},{"date":"2026-11-25","label":"Thanksgiving","days":1},{"date":"2026-11-27","label":"Thanksgiving","days":1}],"extras":[{"heading":"Dec 19 (Friday) @ 3:00pm","content":"Makeup Exam (for students who missed a previous exam)"}],"topics":{"2026-08-26":"Introduction","2026-08-28":"Female Sexual Anatomy\nSex Survey","2026-08-31":"Female Sexual Anatomy","2026-09-02":"Female Sexual Anatomy","2026-09-04":"Male Sexual Anatomy\nTop Hat Syllabus Due","2026-09-09":"Male Sexual Anatomy","2026-09-11":"Review 1","2026-09-14":"Exam 1\n(Chapter quizzes due night before)","2026-09-16":"Fertility","2026-09-18":"Fertility","2026-09-21":"Sex & Gender","2026-09-23":"Sex & Gender","2026-09-25":"Talk with Kelly Denithorne: Being a\ntrans woman","2026-09-28":"Pregnancy & Childbirth","2026-09-30":"Pregnancy & Childbirth","2026-10-02":"Review 2","2026-10-05":"Exam 2\n(Chapter quizzes due night before)","2026-10-07":"Sexual Arousal, Attraction & Response","2026-10-09":"Sexual Arousal, Attraction & Response","2026-10-12":"Sexual Arousal, Attraction & Response","2026-10-14":"Sexual Behavior","2026-10-16":"Sexual Behavior","2026-10-19":"Sexual Behavior","2026-10-21":"Review 3","2026-10-23":"Exam 3\n(Chapter quizzes due night before)","2026-10-26":"Childhood Sexual Development","2026-10-28":"Childhood Sexual Development","2026-10-30":"Adult Sexual Development","2026-11-02":"Adult Sexual Development","2026-11-04":"Sexual Orientation","2026-11-06":"Sexual Orientation","2026-11-09":"Review 4","2026-11-13":"Exam 4\n(Chapter quizzes due night before)","2026-11-16":"Sexual Relationships","2026-11-18":"Sexual Relationships","2026-11-20":"Sexual Relationships","2026-11-30":"Fetishes, Kinks & Paraphilias","2026-12-02":"Fetishes, Kinks & Paraphilias","2026-12-04":"Sex Work","2026-12-07":"Sex Work","2026-12-09":"Review 5","2026-12-11":"Exam 5\n(Chapter quizzes due night before)"},"label":"PSY175 — Fall 2026"},"psy175-spring-2026":{"course":"PSY175","title":"PSY175 - Human Sexuality","semester":"Spring 2026","days":{"1":true,"3":true,"5":true},"start":"2026-01-21","end":"2026-05-08","examCount":4,"reviewsBeforeExams":true,"noClass":[{"date":"2026-02-16","label":"President’s Day","days":1},{"date":"2026-03-23","label":"Spring Recess","days":1},{"date":"2026-03-25","label":"Spring Recess","days":1},{"date":"2026-03-27","label":"Spring Recess","days":1}],"extras":[{"heading":"May 11 (Monday) @ 3:00pm","content":"Makeup Exam (for students who missed a previous exam)"}],"topics":{"2026-01-21":"Introduction","2026-01-23":"Learning About Class Resources\nSex Survey","2026-01-26":"Female Sexual Anatomy","2026-01-28":"Female Sexual Anatomy","2026-01-30":"Female Sexual Anatomy\nTop Hat Syllabus Due","2026-02-02":"Male Sexual Anatomy","2026-02-04":"Male Sexual Anatomy","2026-02-06":"Male Sexual Anatomy","2026-02-09":"How to Study for PSY175\nReview 1","2026-02-11":"Exam 1\n(Chapter quizzes due night before)","2026-02-13":"Guest Speaker","2026-02-18":"Sex & Gender","2026-02-20":"Sex & Gender","2026-02-23":"Fertility","2026-02-25":"Fertility","2026-02-27":"Fertility","2026-03-02":"Pregnancy & Childbirth","2026-03-04":"Pregnancy & Childbirth","2026-03-06":"Review 2","2026-03-09":"Exam 2\n(Chapter quizzes due night before)","2026-03-11":"Sexual Arousal, Attraction & Response","2026-03-13":"Sexual Arousal, Attraction & Response","2026-03-16":"Sexual Arousal, Attraction & Response","2026-03-18":"Sexual Arousal, Attraction & Response","2026-03-20":"Sexual Orientation","2026-03-30":"Sexual Behavior","2026-04-01":"Sexual Behavior","2026-04-03":"Sexual Behavior","2026-04-06":"Childhood Sexual Development","2026-04-08":"Childhood Sexual Development","2026-04-10":"Review 3","2026-04-13":"Exam 3\n(Chapter quizzes due night before)","2026-04-15":"Adult Sexual Development","2026-04-17":"Adult Sexual Development","2026-04-20":"Sexual Relationships","2026-04-22":"Sexual Relationships","2026-04-24":"Sexual Relationships","2026-04-27":"Fetishes, Kinks & Paraphilias","2026-04-29":"Fetishes, Kinks & Paraphilias","2026-05-01":"Sex Work","2026-05-04":"Sex Work","2026-05-06":"Review 4","2026-05-08":"Exam 4\n(Chapter quizzes due night before)"},"label":"PSY175 — Spring 2026"}};
+  var EXAMPLE_ORDER=["psy001-summer-2025","psy157-fall-2025","psy157-spring-2026","psy170-fall-2025","psy170-spring-2026","psy175-fall-2026","psy175-spring-2026"];
+
+  // ---------- constants ----------
+  var MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var DAY_ORDER=[1,2,3,4,5,6,0];
+  var DAY_SHORT={0:"Sun",1:"Mon",2:"Tue",3:"Wed",4:"Thu",5:"Fri",6:"Sat"};
+  var DAY_FULL={0:"Sunday",1:"Monday",2:"Tuesday",3:"Wednesday",4:"Thursday",5:"Friday",6:"Saturday"};
+  var STORE_KEY="semester-grid:v4";
+  var TD="border:1px solid #000;padding:6px 8px;vertical-align:top;font-family:Arial,Helvetica,sans-serif;font-size:11pt;line-height:1.35;text-align:center";
+  var REMINDER="(Chapter quizzes due night before)";
+  var uid=1;
+
+  // ---------- state ----------
+  var state={ course:"", title:"", semester:"", days:{}, start:"", end:"", noClass:[], extras:[], topics:{}, courses:{}, examCount:0, reviewsBeforeExams:false, chapterReminders:false };
+  var previewOpen=false, armed=null, draggingLec=null, draggingCellIso=null, ncMultiOn=false, jsonpN=0;
+
+  // ---------- helpers ----------
+  function $(id){ return document.getElementById(id); }
+  function hasDay(d){ return !!state.days[d]; }
+  function parseLocal(s){ var p=s.split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
+  function pad(n){ return (n<10?"0":"")+n; }
+  function ymd(dt){ return dt.getFullYear()+"-"+pad(dt.getMonth()+1)+"-"+pad(dt.getDate()); }
+  function fmt(dt){ return MONTHS[dt.getMonth()]+" "+dt.getDate(); }
+  function fmtIso(iso){ return fmt(parseLocal(iso)); }
+  function mondayOf(dt){ var c=new Date(dt.getTime()); var shift=(c.getDay()+6)%7; c.setDate(c.getDate()-shift); return c; }
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function nl2br(s){ return esc(s).replace(/\n/g,"<br>"); }
+  function escAttr(s){ return esc(s).replace(/"/g,"&quot;"); }
+
+  function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+  function load(){
+    try{
+      var raw=localStorage.getItem(STORE_KEY); if(!raw) return false;
+      var s=JSON.parse(raw);
+      state.course=s.course||""; state.title=s.title||""; state.semester=s.semester||"";
+      state.days=s.days||{}; state.start=s.start||""; state.end=s.end||"";
+      state.noClass=Array.isArray(s.noClass)?s.noClass:[];
+      state.extras=Array.isArray(s.extras)?s.extras:[];
+      state.topics=s.topics||{}; state.courses=s.courses||{};
+      state.examCount=+s.examCount||0; state.reviewsBeforeExams=!!s.reviewsBeforeExams; state.chapterReminders=!!s.chapterReminders;
+      state.noClass.forEach(function(n){ if(!n.id) n.id=uid++; if(!n.days) n.days=1; });
+      state.extras.forEach(function(x){ if(!x.id) x.id=uid++; });
+      return true;
+    }catch(e){ return false; }
+  }
+
+  // ---------- course library ----------
+  function courseNames(){ var n=BASE_ORDER.slice(); Object.keys(state.courses).forEach(function(c){ if(n.indexOf(c)<0) n.push(c); }); return n; }
+  function lecturesFor(name){
+    if(state.courses[name]) return state.courses[name].map(function(x){ return {name:x.name, days:x.days}; });
+    if(BASE_COURSES[name]) return BASE_COURSES[name].map(function(x){ return {name:x[0], days:x[1]}; });
+    return [];
+  }
+  function currentLectures(){ if(!state.course || state.course==="__new__") return []; return lecturesFor(state.course); }
+
+  // ---------- holidays (supports multi-day breaks) ----------
+  function expandHolidays(){
+    var map={}, list=[], anyDays=DAY_ORDER.some(hasDay);
+    state.noClass.forEach(function(n){
+      if(!n.date) return;
+      var label=n.label||"No Class", count=(n.days&&n.days>1)?n.days:1, isos=[];
+      if(count<=1 || !anyDays){ isos=[n.date]; }
+      else {
+        var d=parseLocal(n.date), got=0, limit=new Date(d.getTime()); limit.setDate(limit.getDate()+180);
+        while(got<count && d<=limit){ if(hasDay(d.getDay())){ isos.push(ymd(d)); got++; } d.setDate(d.getDate()+1); }
+      }
+      isos.forEach(function(iso){ map[iso]=label; });
+      list.push({entry:n, isos:isos});
+    });
+    return {map:map, list:list};
+  }
+
+  // ---------- compute schedule ----------
+  function compute(){
+    var cols=DAY_ORDER.filter(hasDay);
+    var res={cols:cols, weeks:[], dated:0, held:0, noClassCount:0, examDays:0, reviewDays:0, lectureDays:0, warnings:[]};
+    if(!state.start || !state.end || cols.length===0) return res;
+    var start=parseLocal(state.start), end=parseLocal(state.end);
+    if(isNaN(start) || isNaN(end)) return res;
+    if(end<start){ res.warnings.push("The last class day is before the first — check your dates."); return res; }
+    var exp=expandHolidays(), ncMap=exp.map;
+    var weeks={}, order=[];
+    for(var d=new Date(start.getTime()); d<=end; d.setDate(d.getDate()+1)){
+      if(!hasDay(d.getDay())) continue;
+      var iso=ymd(d), wk=ymd(mondayOf(d));
+      if(!weeks[wk]){ weeks[wk]={}; order.push(wk); }
+      var isNc=Object.prototype.hasOwnProperty.call(ncMap,iso);
+      weeks[wk][d.getDay()]={ iso:iso, dayNum:d.getDay(), dateLabel:fmt(d), isNoClass:isNc, ncLabel:isNc?ncMap[iso]:"" };
+      res.dated++; if(isNc) res.noClassCount++; else res.held++;
+    }
+    order.sort();
+    res.weeks=order.map(function(k){ var row=weeks[k]; return { mon:k, cells: cols.map(function(c){ return row[c]||null; }) }; });
+    // exam/review counts: the greater of what's on the calendar vs. what the generator is set to
+    var pExam=0, pReview=0;
+    res.weeks.forEach(function(w){ w.cells.forEach(function(c){
+      if(c && !c.isNoClass){ var t=(effContent(c)||"").trim(); if(/^Exam\b/i.test(t)) pExam++; else if(/^Review\b/i.test(t)) pReview++; }
+    }); });
+    var gExam=state.examCount||0, gReview=state.reviewsBeforeExams ? (state.examCount||0) : 0;
+    res.examDays=Math.max(pExam, gExam);
+    res.reviewDays=Math.max(pReview, gReview);
+    res.lectureDays=Math.max(0, res.held-res.examDays-res.reviewDays);
+    // warnings: no-class entries that don't land in the grid
+    var s=state.start, e=state.end;
+    exp.list.forEach(function(it){
+      var inGrid=it.isos.some(function(iso){ return iso>=s && iso<=e && hasDay(parseLocal(iso).getDay()); });
+      if(!inGrid){ var n=it.entry; res.warnings.push(fmtIso(n.date)+(n.label?" ("+n.label+")":"")+" isn’t on a selected class day, so it won’t appear in the grid."); }
+    });
+    return res;
+  }
+
+  function effContent(cell){
+    var t=state.topics[cell.iso];
+    if(t!==undefined) return t;
+    return cell.isNoClass ? ("No Class ("+cell.ncLabel+")") : "";
+  }
+  function heldSequence(res){ var seq=[]; res.weeks.forEach(function(w){ w.cells.forEach(function(c){ if(c && !c.isNoClass) seq.push(c.iso); }); }); return seq; }
+
+  // ---------- placement ----------
+  function placeLecture(startIso, lec){
+    var res=compute(), seq=heldSequence(res), start=seq.indexOf(startIso);
+    if(start<0){ state.topics[startIso]=lec.name; }
+    else { var n=Math.max(1, lec.days||1); for(var k=0;k<n && (start+k)<seq.length;k++){ state.topics[seq[start+k]]=lec.name; } }
+    applyChapterReminders();
+    renderGrid(); renderChips(); save(); if(previewOpen) renderPreview();
+  }
+
+  function autoFill(){
+    if(!state.course || state.course==="__new__"){ toast("Pick a class first."); return; }
+    var lects=currentLectures();
+    if(!lects.length){ toast("No lectures for this class."); return; }
+    var res=compute(), seq=heldSequence(res);
+    if(!seq.length){ toast("Set class days and dates first."); return; }
+    var hasContent=seq.some(function(iso){ return (state.topics[iso]||"").trim(); });
+    if(hasContent && !confirm("Auto-fill overwrites the class-day cells with this class’s lectures in order (holidays are left alone). Continue?")) return;
+    seq.forEach(function(iso){ delete state.topics[iso]; });
+    var idx=0, totalDays=0;
+    for(var li=0; li<lects.length; li++){
+      var n=Math.max(1, lects[li].days||1); totalDays+=n;
+      for(var k=0;k<n;k++){ if(idx<seq.length){ state.topics[seq[idx]]=lects[li].name; idx++; } }
+    }
+    applyChapterReminders();
+    renderGrid(); renderChips(); save(); if(previewOpen) renderPreview();
+    if(totalDays>seq.length) toast("Filled in order — "+(totalDays-seq.length)+" lecture-day(s) didn’t fit. Add class days or reduce lectures.");
+    else if(idx<seq.length) toast("Filled all lectures — "+(seq.length-idx)+" class day(s) left open for exams/reviews.");
+    else toast("Filled all lectures in order.");
+  }
+
+  // ---------- chapter-quiz reminders ----------
+  function applyChapterReminders(){
+    var res=compute();
+    res.weeks.forEach(function(w){ w.cells.forEach(function(c){
+      if(!c || c.isNoClass) return;
+      var t=state.topics[c.iso]; if(t===undefined) return;
+      var lines=t.split("\n").filter(function(L){ return L.trim()!==REMINDER; });
+      if(state.chapterReminders && /^Exam\b/i.test((lines[0]||"").trim())) lines.push(REMINDER);
+      var nt=lines.join("\n");
+      if(nt!==t){ if(nt==="") delete state.topics[c.iso]; else state.topics[c.iso]=nt; }
+    }); });
+  }
+
+  // ---------- output builders ----------
+  function fmtCellLines(content){
+    return content.split("\n").map(function(line){
+      var e=esc(line);
+      return /^Exam\b/i.test(line.trim()) ? ("<strong>"+e+"</strong>") : e;
+    }).join("<br>");
+  }
+  function buildInner(width, centered){
+    width = width || "8in";
+    var res=compute();
+    var extras=state.extras.filter(function(x){ return (x.heading&&x.heading.trim()) || (x.content&&x.content.trim()); });
+    if(res.weeks.length===0 && extras.length===0) return "";
+    if(res.cols.length===0) return "";
+    var cols=res.cols, parts=[];
+    if(state.title) parts.push('<p style="text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:14pt;font-weight:bold;margin:0 0 3pt 0">'+esc(state.title)+'</p>');
+    if(state.semester) parts.push('<p style="text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12pt;margin:0 0 10pt 0">'+esc(state.semester)+'</p>');
+    var th=cols.map(function(c){ return '<th style="border:1px solid #000;background:#ededed;padding:6px 8px;font-family:Arial,Helvetica,sans-serif;font-size:11pt;text-align:center">'+DAY_FULL[c]+'</th>'; }).join("");
+    var trs=res.weeks.map(function(w){
+      var tds=w.cells.map(function(cell){
+        if(!cell) return '<td style="'+TD+'">&nbsp;</td>';
+        var content=effContent(cell); var body=content ? "<br>"+fmtCellLines(content) : "";
+        return '<td style="'+TD+'"><span style="text-decoration:underline">'+esc(cell.dateLabel)+'</span>'+body+'</td>';
+      }).join("");
+      return "<tr>"+tds+"</tr>";
+    }).join("");
+    var extraTrs=extras.map(function(x){
+      var body=(x.content&&x.content.trim()) ? "<br>"+nl2br(x.content) : "";
+      var head=(x.heading&&x.heading.trim()) ? "<strong>"+esc(x.heading)+"</strong>" : "";
+      return '<tr><td colspan="'+cols.length+'" style="'+TD+';text-align:center">'+head+body+"</td></tr>";
+    }).join("");
+    var tstyle="border-collapse:collapse;width:"+width+";table-layout:fixed"+(centered?";margin-left:auto;margin-right:auto":"");
+    parts.push('<table style="'+tstyle+'"><thead><tr>'+th+"</tr></thead><tbody>"+trs+extraTrs+"</tbody></table>");
+    return parts.join("");
+  }
+
+  function buildText(){
+    var res=compute(), lines=[];
+    if(state.title) lines.push(state.title);
+    if(state.semester) lines.push(state.semester);
+    lines.push(res.cols.map(function(c){ return DAY_FULL[c]; }).join("\t"));
+    res.weeks.forEach(function(w){
+      lines.push(w.cells.map(function(cell){ if(!cell) return ""; var content=effContent(cell); return cell.dateLabel+(content?" — "+content.replace(/\n/g,"; "):""); }).join("\t"));
+    });
+    state.extras.forEach(function(x){ if((x.heading&&x.heading.trim())||(x.content&&x.content.trim())) lines.push((x.heading||"")+(x.content?" — "+x.content.replace(/\n/g,"; "):"")); });
+    return lines.join("\n");
+  }
+
+  function slug(){
+    var s=(state.title||"class-schedule").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+    if(state.semester){ var sem=state.semester.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,""); if(sem) s+="-"+sem; }
+    return s||"class-schedule";
+  }
+  function docTitle(){ return (state.title||"Class Schedule")+(state.semester?" — "+state.semester:""); }
+
+  // ---------- chips ----------
+  function placedSet(){ var s={}; Object.keys(state.topics).forEach(function(iso){ var v=(state.topics[iso]||"").trim(); if(v) s[v]=true; }); return s; }
+  function isArmed(name){ return armed && armed.name===name; }
+  function chipHTML(name, days, kind, placed){
+    var used=!!placed[name];
+    var badge = kind==="lecture" ? '<span class="lec-days">'+days+'d</span>' : '';
+    return '<button type="button" class="chip-btn chip-'+kind+(used?" used":"")+(isArmed(name)?" armed":"")+'" draggable="true" data-name="'+escAttr(name)+'" data-days="'+days+'" title="'+escAttr(name)+(kind==="lecture"?" · "+days+" day(s)":"")+'">'
+      +'<span class="lec-name">'+esc(name)+'</span>'+badge+'</button>';
+  }
+  function renderChips(){ document.body.classList.toggle("armed", armed!=null); renderPalette(); renderAssess(); }
+
+  function renderPalette(){
+    var lects=currentLectures(), pal=$("palette"), count=$("lec-count");
+    if(!state.course || state.course==="__new__"){
+      pal.innerHTML='<div class="palette-empty">Pick a class from the <b>Class</b> dropdown to load its lectures here — or choose <b>New course</b> and build the schedule by hand.</div>';
+      count.textContent=""; return;
+    }
+    if(!lects.length){ pal.innerHTML='<div class="palette-empty">No lectures saved for this class yet. Use <b>Update from sheet</b> to add them.</div>'; count.textContent=""; return; }
+    var placed=placedSet(), usedCount=0;
+    pal.innerHTML=lects.map(function(l){ if(placed[l.name]) usedCount++; return chipHTML(l.name,l.days,"lecture",placed); }).join("");
+    count.textContent=usedCount+" / "+lects.length+" placed";
+  }
+
+  function renderAssess(){
+    var pal=$("assess-palette"), n=state.examCount||0;
+    if(!n){ pal.innerHTML='<div class="palette-empty">Choose how many exams, optionally turn on reviews, then press <b>Generate</b> — the chips appear here to drag onto the calendar.</div>'; return; }
+    var placed=placedSet(), chips=[];
+    for(var i=1;i<=n;i++){
+      if(state.reviewsBeforeExams) chips.push(chipHTML("Review "+i,1,"review",placed));
+      chips.push(chipHTML("Exam "+i,1,"exam",placed));
+    }
+    pal.innerHTML=chips.join("");
+  }
+
+  function renderLoadSelect(){
+    var opts=['<option value="" selected>Load a past schedule…</option>'];
+    EXAMPLE_ORDER.forEach(function(k){ opts.push('<option value="'+k+'">'+esc(EXAMPLE_SCHEDULES[k].label)+'</option>'); });
+    $("load-select").innerHTML=opts.join("");
+  }
+
+  function renderCourseSelect(){
+    var names=courseNames();
+    var opts=['<option value=""'+(!state.course?" selected":"")+' disabled>Choose a class…</option>'];
+    names.forEach(function(n){ opts.push('<option value="'+escAttr(n)+'"'+(state.course===n?" selected":"")+'>'+esc(n)+'</option>'); });
+    opts.push('<option value="__new__"'+(state.course==="__new__"?" selected":"")+'>＋ New course…</option>');
+    $("f-course").innerHTML=opts.join("");
+  }
+
+  function renderDays(){
+    $("day-toggles").innerHTML=DAY_ORDER.map(function(d){
+      return '<button type="button" class="day-toggle'+(hasDay(d)?" on":"")+'" data-day="'+d+'" aria-pressed="'+(hasDay(d)?"true":"false")+'">'+DAY_SHORT[d]+"</button>";
+    }).join("");
+  }
+
+  function renderNoClass(){
+    $("noclass-list").innerHTML=state.noClass.map(function(n){
+      var daysField = (n.days>1) ? '<input type="number" class="nc-days" min="1" max="20" value="'+n.days+'" title="Class days off" style="width:60px">' : '';
+      return '<div class="row-item" data-id="'+n.id+'">'
+        +'<input type="date" class="nc-d" value="'+escAttr(n.date||"")+'" aria-label="Date">'
+        +'<input type="text" class="nc-l grow" value="'+escAttr(n.label||"")+'" placeholder="Label" aria-label="Label" autocomplete="off">'
+        +daysField
+        +'<button type="button" class="btn-icon nc-del" data-id="'+n.id+'" aria-label="Remove">&times;</button></div>';
+    }).join("");
+  }
+
+  function renderExtras(){
+    var el=$("extras-list");
+    el.innerHTML=state.extras.map(function(x){
+      return '<div class="extra-item" data-id="'+x.id+'"><div class="extra-head">'
+        +'<input type="text" class="ex-h grow" value="'+escAttr(x.heading||"")+'" placeholder="Heading — e.g. Dec 19 (Friday) @ 3:00pm" autocomplete="off">'
+        +'<button type="button" class="btn-icon ex-del" data-id="'+x.id+'" aria-label="Remove">&times;</button></div>'
+        +'<textarea class="ex-c" rows="1" placeholder="Details — e.g. Makeup Exam">'+esc(x.content||"")+'</textarea></div>';
+    }).join("");
+    el.querySelectorAll("textarea.ex-c").forEach(autosize);
+  }
+
+  function renderSummary(res){
+    var el=$("summary");
+    if(!state.start || !state.end || res.cols.length===0){ el.innerHTML='<span class="stat hint-stat">Set class days &amp; dates to build the grid</span>'; return; }
+    var parts=['<span class="stat"><b>'+res.weeks.length+'</b> weeks</span>','<span class="stat"><b>'+res.held+'</b> class days</span>','<span class="stat lec"><b>'+res.lectureDays+'</b> lecture days</span>'];
+    if(res.examDays>0) parts.push('<span class="stat exam"><b>'+res.examDays+'</b> exams</span>');
+    if(res.reviewDays>0) parts.push('<span class="stat review"><b>'+res.reviewDays+'</b> reviews</span>');
+    if(res.noClassCount>0) parts.push('<span class="stat nc"><b>'+res.noClassCount+'</b> no-class</span>');
+    el.innerHTML=parts.join("");
+  }
+
+  function warnIcon(){ return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>'; }
+  function warnBlock(res){ if(!res.warnings.length) return ""; return '<div class="warnings">'+res.warnings.map(function(w){ return '<div class="warn">'+warnIcon()+"<span>"+esc(w)+"</span></div>"; }).join("")+"</div>"; }
+
+  function renderGrid(){
+    var res=compute();
+    renderSummary(res);
+    var wrap=$("grid-wrap");
+    if(res.cols.length===0 || !state.start || !state.end){
+      wrap.innerHTML='<div class="empty">Pick your <b>class days</b> and a <b>first</b> and <b>last</b> class day, and the weekly grid appears here — one row per week.</div>';
+      if(previewOpen) renderPreview(); return;
+    }
+    if(res.weeks.length===0){ wrap.innerHTML='<div class="empty">No class days fall inside that date range.</div>'+warnBlock(res); if(previewOpen) renderPreview(); return; }
+    var head='<tr><th class="wk-head" aria-hidden="true">Wk</th>'+res.cols.map(function(c){ return "<th>"+DAY_FULL[c]+"</th>"; }).join("")+"</tr>";
+    var body=res.weeks.map(function(w,i){
+      var cells=w.cells.map(function(cell){
+        if(!cell) return '<td class="cell cell-empty"></td>';
+        var val=effContent(cell), isNc=cell.isNoClass, hasText=val.trim()!=="";
+        var cls=isNc?"cell cell-nc":"cell";
+        var bodyHtml=hasText ? esc(val).replace(/\n/g,"<br>") : (isNc?"":'<span class="cell-hint">Double-click to add</span>');
+        return '<td class="'+cls+'" data-iso="'+cell.iso+'"'+(isNc?' data-nc="1"':'')+((hasText && !isNc)?' draggable="true"':'')+'>'
+          +'<div class="cell-top"><span class="cell-date">'+esc(cell.dateLabel)+'</span>'+(isNc?'<span class="chip">No class</span>':'')+'</div>'
+          +'<div class="cell-body">'+bodyHtml+'</div></td>';
+      }).join("");
+      return '<tr><th class="wk-head">'+(i+1)+"</th>"+cells+"</tr>";
+    }).join("");
+    wrap.innerHTML='<div class="table-scroll"><table class="grid"><thead>'+head+"</thead><tbody>"+body+"</tbody></table></div>"+warnBlock(res);
+    if(previewOpen) renderPreview();
+  }
+
+  // move/swap a day's text to another day
+  function swapCells(a,b){
+    var va=state.topics[a], vb=state.topics[b];
+    if(vb===undefined) delete state.topics[a]; else state.topics[a]=vb;
+    if(va===undefined) delete state.topics[b]; else state.topics[b]=va;
+    applyChapterReminders();
+    renderGrid(); renderChips(); save(); if(previewOpen) renderPreview();
+  }
+  function defaultTextFor(iso, isNc){
+    if(state.topics[iso]!==undefined) return state.topics[iso];
+    if(isNc){ var m=expandHolidays().map[iso]; return m ? ("No Class ("+m+")") : "No Class"; }
+    return "";
+  }
+  // double-click a day to edit its text inline
+  function startCellEdit(td){
+    var iso=td.dataset.iso; if(!iso || td.querySelector("textarea.cell-edit")) return;
+    var isNc=!!td.dataset.nc, holder=td.querySelector(".cell-body");
+    var cur=defaultTextFor(iso, isNc), done=false;
+    td.setAttribute("draggable","false");
+    var ta=document.createElement("textarea");
+    ta.className="cell-edit"; ta.value=cur; ta.rows=1;
+    holder.innerHTML=""; holder.appendChild(ta);
+    autosize(ta); ta.focus(); ta.select();
+    var commit=function(cancel){
+      if(done) return; done=true;
+      if(!cancel){ var v=ta.value; if(v.trim()==="") delete state.topics[iso]; else state.topics[iso]=v; applyChapterReminders(); }
+      renderGrid(); renderChips(); save(); if(previewOpen) renderPreview();
+    };
+    ta.addEventListener("blur", function(){ commit(false); });
+    ta.addEventListener("input", function(){ autosize(ta); });
+    ta.addEventListener("keydown", function(ev){
+      if(ev.key==="Escape"){ ev.preventDefault(); commit(true); }
+      else if(ev.key==="Enter" && (ev.metaKey||ev.ctrlKey)){ ev.preventDefault(); ta.blur(); }
+    });
+  }
+
+  function renderPreview(){ var inner=buildInner("8in", false); $("preview").innerHTML=inner || '<div class="empty">Fill in the schedule to preview the table.</div>'; }
+  function autosize(el){ el.style.height="auto"; el.style.height=(el.scrollHeight)+"px"; }
+
+  // ---------- toast / status ----------
+  var toastTimer=null;
+  function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("show"); if(toastTimer) clearTimeout(toastTimer); toastTimer=setTimeout(function(){ t.classList.remove("show"); }, 2900); }
+  function status(msg){ $("status").textContent=msg||""; }
+
+  // ---------- copy / download ----------
+  function ensureContent(width, centered){ var inner=buildInner(width, centered); if(!inner){ toast("Add class days and dates first."); return null; } return inner; }
+  function copyTable(){
+    var inner=ensureContent("8in", false); if(!inner) return;
+    var text=buildText();
+    var done=function(ok){ toast(ok?"Table copied — paste into your Google Doc":"Couldn’t copy — try Download instead"); if(ok) status("Copied ✓"); };
+    if(navigator.clipboard && window.ClipboardItem){
+      try{
+        var item=new ClipboardItem({ "text/html": new Blob([inner],{type:"text/html"}), "text/plain": new Blob([text],{type:"text/plain"}) });
+        navigator.clipboard.write([item]).then(function(){ done(true); }, function(){ execCopy(inner, done); }); return;
+      }catch(e){}
+    }
+    execCopy(inner, done);
+  }
+  function execCopy(inner, done){
+    var holder=document.createElement("div"); holder.setAttribute("contenteditable","true");
+    holder.style.cssText="position:fixed;left:-9999px;top:0;white-space:normal;opacity:0"; holder.innerHTML=inner; document.body.appendChild(holder);
+    var range=document.createRange(); range.selectNodeContents(holder);
+    var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    var ok=false; try{ ok=document.execCommand("copy"); }catch(e){ ok=false; }
+    sel.removeAllRanges(); document.body.removeChild(holder); done(ok);
+  }
+  function downloadFile(filename, content, mime){
+    try{
+      var blob=new Blob([content],{type:mime}), url=URL.createObjectURL(blob);
+      var a=document.createElement("a"); a.href=url; a.download=filename; a.rel="noopener"; document.body.appendChild(a); a.click();
+      setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 800);
+      toast("Downloaded "+filename); status("Saved "+filename);
+    }catch(e){
+      var w=window.open("","_blank"); if(w){ w.document.open(); w.document.write(content); w.document.close(); toast("Opened in a new tab — use File ▸ Save"); } else toast("Download was blocked by the browser.");
+    }
+  }
+  function wordHtml(inner){ return '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+esc(docTitle())+'</title></head><body>'+inner+"</body></html>"; }
+  function pageHtml(inner){ return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(docTitle())+'</title></head><body style="margin:28px;font-family:Arial,Helvetica,sans-serif">'+inner+"</body></html>"; }
+  function downloadDoc(){ var inner=ensureContent("6.5in", false); if(!inner) return; downloadFile(slug()+".doc", wordHtml(inner), "application/msword"); }
+  function downloadHtml(){ var inner=ensureContent("8in", true); if(!inner) return; downloadFile(slug()+".html", pageHtml(inner), "text/html"); }
+
+  function togglePreview(){
+    previewOpen=!previewOpen; $("preview-panel").hidden=!previewOpen; $("btn-preview").textContent=previewOpen?"Hide preview":"Show preview";
+    if(previewOpen){ renderPreview(); $("preview-panel").scrollIntoView({behavior:"smooth",block:"nearest"}); }
+  }
+
+  // ---------- import from sheet ----------
+  function parseImport(text){
+    var rows=text.split(/\r?\n/), out=[];
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i]; if(!r.trim()) continue;
+      var cells= r.indexOf("\t")>=0 ? r.split("\t") : r.split(","); cells=cells.map(function(c){ return c.trim(); });
+      var name, days;
+      if(cells.length>=3){ name=cells[1]; days=parseInt(cells[cells.length-1],10); }
+      else if(cells.length===2){ name=cells[0]; days=parseInt(cells[1],10); } else continue;
+      if(/^order$/i.test(cells[0]) || /^lectures?$/i.test(name)) continue;
+      if(!name) continue; if(!days || isNaN(days) || days<1) days=1;
+      out.push({name:name, days:days});
+    }
+    return out;
+  }
+  function toggleImport(open){
+    var box=$("import-box"), show = open==null ? box.hidden : open; box.hidden=!show;
+    if(show){ $("imp-name").value=(state.course && state.course!=="__new__")?state.course:""; $("imp-data").value=""; $("imp-name").focus(); }
+  }
+  function saveImport(){
+    var name=$("imp-name").value.trim(), lects=parseImport($("imp-data").value);
+    if(!name){ toast("Give the course a name."); return; }
+    if(!lects.length){ toast("Couldn’t read any lectures — paste the Lecture and Days columns."); return; }
+    state.courses[name]=lects; state.course=name; state.title=name; toggleImport(false); armed=null;
+    renderCourseSelect(); syncInputs(); renderChips(); save(); toast("Saved "+lects.length+" lectures for "+name);
+  }
+
+  // ---------- no-class add (with lecture shift-down) ----------
+  function addNoClassEntries(entries){
+    var before=compute(), oldHeld=heldSequence(before);
+    var stream=oldHeld.map(function(d){ return state.topics[d]!==undefined ? state.topics[d] : ""; });
+    entries.forEach(function(e){ state.noClass.push({id:uid++, date:e.date, label:e.label, days:e.days||1}); });
+    state.noClass.sort(function(a,b){ return (a.date||"").localeCompare(b.date||""); });
+    var after=compute(), newHeld=heldSequence(after);
+    oldHeld.forEach(function(d){ delete state.topics[d]; });
+    var exp=expandHolidays(); Object.keys(exp.map).forEach(function(iso){ delete state.topics[iso]; });
+    var overflow=0;
+    for(var i=0;i<stream.length;i++){
+      if(i<newHeld.length){ if(stream[i]!=="") state.topics[newHeld[i]]=stream[i]; }
+      else if(stream[i]!=="") overflow++;
+    }
+    return overflow;
+  }
+  function addNoClass(){
+    var d=$("nc-date").value, l=$("nc-label").value.trim();
+    if(!d){ toast("Pick a date for the no-class day."); return; }
+    var days = ncMultiOn ? Math.max(2, parseInt($("nc-count").value,10)||2) : 1;
+    var overflow=addNoClassEntries([{date:d,label:l,days:days}]);
+    $("nc-date").value=""; $("nc-label").value="";
+    ncMultiOn=false; $("nc-multi").setAttribute("aria-pressed","false"); $("nc-multi").classList.remove("on"); $("nc-count").style.display="none"; $("nc-count").value="2";
+    renderNoClass(); renderGrid(); renderChips(); save();
+    if(overflow>0) toast(overflow+" lecture-day(s) pushed past the last class day — extend the end date if needed.");
+    else toast(days>1 ? ("Added "+days+"-day break — lectures shifted down") : "Added no-class day — lectures shifted down");
+  }
+  function clearHolidayTopics(){ var exp=expandHolidays(); Object.keys(exp.map).forEach(function(iso){ delete state.topics[iso]; }); }
+
+  // ---------- load a past schedule ----------
+  function hasWork(){ return Object.keys(state.topics).length>0 || !!state.start || !!state.title; }
+  function loadSchedule(key){
+    var ex=EXAMPLE_SCHEDULES[key]; if(!ex) return;
+    if(hasWork() && !confirm("Load “"+ex.label+"”? This replaces the current schedule.")){ $("load-select").value=""; return; }
+    var courses=state.courses, topics={};
+    Object.keys(ex.topics).forEach(function(k){ topics[k]=ex.topics[k]; });
+    state={
+      course:ex.course, title:ex.title, semester:ex.semester,
+      days:JSON.parse(JSON.stringify(ex.days)), start:ex.start, end:ex.end,
+      noClass:ex.noClass.map(function(n){ return {id:uid++, date:n.date, label:n.label, days:n.days||1}; }),
+      extras:ex.extras.map(function(x){ return {id:uid++, heading:x.heading, content:x.content}; }),
+      topics:topics, courses:courses, examCount:ex.examCount||0, reviewsBeforeExams:!!ex.reviewsBeforeExams, chapterReminders:false
+    };
+    armed=null; ncMultiOn=false; renderAll(); save(); $("load-select").value=""; status(""); toast("Loaded "+ex.label);
+  }
+
+  // ---------- save/load via Google Sheet (copy-paste code) ----------
+  function b64encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+  function b64decode(b64){ return decodeURIComponent(escape(atob(b64))); }
+  function copyText(text, okMsg){
+    var done=function(ok){ toast(ok?okMsg:"Couldn’t copy automatically — select the box text and copy manually."); if(ok) status("Copied ✓"); };
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ execCopyText(text,done); }); }
+    else execCopyText(text, done);
+  }
+  function execCopyText(text, done){
+    var ta=document.createElement("textarea"); ta.value=text; ta.style.cssText="position:fixed;left:-9999px;top:0"; document.body.appendChild(ta); ta.focus(); ta.select();
+    var ok=false; try{ ok=document.execCommand("copy"); }catch(e){ ok=false; } document.body.removeChild(ta); done(ok);
+  }
+  function scheduleToCode(name){
+    var obj={ v:1, name:name, course:state.course, title:state.title, semester:state.semester,
+      days:state.days, start:state.start, end:state.end, examCount:state.examCount,
+      reviewsBeforeExams:state.reviewsBeforeExams, chapterReminders:state.chapterReminders,
+      noClass:state.noClass.map(function(n){ return {date:n.date, label:n.label, days:n.days||1}; }),
+      extras:state.extras.map(function(x){ return {heading:x.heading, content:x.content}; }),
+      topics:state.topics };
+    return "SEMGRID1:"+b64encode(JSON.stringify(obj));
+  }
+  function copySaveCode(){
+    if(!hasWork()){ toast("Nothing to save yet — build a schedule first."); return; }
+    var name=($("save-name").value.trim()) || ((state.title||"Schedule")+(state.semester?" "+state.semester:""));
+    var row=name+"\t"+scheduleToCode(name);
+    copyText(row, "Save code copied — paste it as a row in your Google Sheet");
+  }
+  function parseCodes(text){
+    var out=[], re=/SEMGRID1:([A-Za-z0-9+/=]+)/g, m;
+    while((m=re.exec(text))){ try{ var o=JSON.parse(b64decode(m[1])); if(o && o.v) out.push(o); }catch(e){} }
+    return out;
+  }
+  function applyLoadedSchedule(obj){
+    if(hasWork() && !confirm("Load “"+(obj.name||"saved schedule")+"”? This replaces the current schedule.")) return;
+    var courses=state.courses;
+    state={ course:obj.course||"", title:obj.title||"", semester:obj.semester||"",
+      days:obj.days||{}, start:obj.start||"", end:obj.end||"",
+      noClass:(obj.noClass||[]).map(function(n){ return {id:uid++, date:n.date, label:n.label, days:n.days||1}; }),
+      extras:(obj.extras||[]).map(function(x){ return {id:uid++, heading:x.heading, content:x.content}; }),
+      topics:obj.topics||{}, courses:courses,
+      examCount:+obj.examCount||0, reviewsBeforeExams:!!obj.reviewsBeforeExams, chapterReminders:!!obj.chapterReminders };
+    armed=null; ncMultiOn=false; renderAll(); save();
+    $("load-code").value=""; $("load-picker").hidden=true; $("load-picker").innerHTML="";
+    toast("Loaded "+(obj.name||"schedule"));
+  }
+  function loadFromCode(){
+    var codes=parseCodes($("load-code").value);
+    var picker=$("load-picker");
+    if(!codes.length){ picker.hidden=true; picker.innerHTML=""; toast("No schedule code found — paste the row/code from your sheet."); return; }
+    if(codes.length===1){ applyLoadedSchedule(codes[0]); return; }
+    // multiple codes pasted → let the user pick which
+    picker.innerHTML=codes.map(function(o,i){ return '<div class="load-pick"><span><b>'+esc(o.name||("Schedule "+(i+1)))+'</b>'+(o.semester?' · '+esc(o.semester):'')+'</span><button type="button" class="btn btn-soft load-pick-btn" data-idx="'+i+'">Load</button></div>'; }).join("");
+    picker.hidden=false;
+  }
+
+  // ---------- direct sync (Google Apps Script Web App — works when you host this page yourself) ----------
+  function syncUrl(){ return $("sync-url").value.trim(); }
+  function syncSecret(){ return $("sync-secret").value.trim(); }
+  function syncStatus(msg, isErr){ var el=$("sync-status"); el.textContent=msg||""; el.style.color=isErr?"var(--danger)":"var(--muted)"; }
+  function currentSaveName(){ return ($("save-name").value.trim()) || ((state.title||"Schedule")+(state.semester?" "+state.semester:"")); }
+  function jsonp(url){
+    return new Promise(function(resolve,reject){
+      var name="__sg_cb_"+(jsonpN++), s=document.createElement("script");
+      var timer=setTimeout(function(){ cleanup(); reject(new Error("timeout")); }, 12000);
+      function cleanup(){ clearTimeout(timer); try{ delete window[name]; }catch(e){ window[name]=undefined; } if(s.parentNode) s.parentNode.removeChild(s); }
+      window[name]=function(data){ cleanup(); resolve(data); };
+      s.onerror=function(){ cleanup(); reject(new Error("network")); };
+      s.src=url+(url.indexOf("?")<0?"?":"&")+"callback="+name;
+      document.body.appendChild(s);
+    });
+  }
+  function jsonpCall(url, params){
+    var q=Object.keys(params).filter(function(k){ return params[k]!=="" && params[k]!=null; }).map(function(k){ return encodeURIComponent(k)+"="+encodeURIComponent(params[k]); }).join("&");
+    return jsonp(url+(url.indexOf("?")<0?"?":"&")+q);
+  }
+  function formPost(url, fields){
+    return new Promise(function(resolve){
+      var ifr=document.createElement("iframe"); ifr.name="__sg_ifr_"+(jsonpN++); ifr.style.display="none";
+      var f=document.createElement("form"); f.method="POST"; f.action=url; f.target=ifr.name; f.style.display="none"; f.acceptCharset="utf-8";
+      Object.keys(fields).forEach(function(k){ var i=document.createElement("input"); i.type="hidden"; i.name=k; i.value=(fields[k]==null?"":fields[k]); f.appendChild(i); });
+      document.body.appendChild(ifr); document.body.appendChild(f);
+      var done=false;
+      var finish=function(){ if(done) return; done=true; if(f.parentNode) f.parentNode.removeChild(f); setTimeout(function(){ if(ifr.parentNode) ifr.parentNode.removeChild(ifr); }, 200); resolve(true); };
+      ifr.addEventListener("load", finish);
+      setTimeout(finish, 6000);
+      f.submit();
+    });
+  }
+  function syncErr(e){
+    if(e && e.message==="network") return "Couldn’t reach the sheet. Direct sync only works when you host this page yourself (e.g. GitHub Pages) — not on the shared claude.ai link. The copy/paste option below works anywhere.";
+    if(e && e.message==="timeout") return "The sheet didn’t respond. Check the Web App URL and that it’s deployed with access “Anyone”.";
+    return "Something went wrong: "+((e&&e.message)||e);
+  }
+  function syncSave(){
+    var url=syncUrl(); if(!url){ syncStatus("Enter your Apps Script Web App URL first.", true); return; }
+    if(!hasWork()){ syncStatus("Build a schedule first.", true); return; }
+    var name=currentSaveName();
+    syncStatus("Saving “"+name+"”…", false);
+    formPost(url, {action:"save", name:name, code:scheduleToCode(name), token:syncSecret()})
+      .then(function(){ return jsonpCall(url, {action:"list", token:syncSecret()}); })
+      .then(function(res){
+        var ok=res && res.ok && (res.items||[]).some(function(it){ return it.name===name; });
+        syncStatus(ok ? ("Saved “"+name+"” to your sheet ✓") : "Sent to the sheet — but couldn’t confirm it. Open the sheet to check.", !ok);
+      })
+      .catch(function(e){ syncStatus(syncErr(e), true); });
+  }
+  function syncLoad(){
+    var url=syncUrl(); if(!url){ syncStatus("Enter your Apps Script Web App URL first.", true); return; }
+    syncStatus("Loading from your sheet…", false); $("sync-list").hidden=true;
+    jsonpCall(url, {action:"list", token:syncSecret()}).then(function(res){
+      if(!res || !res.ok){ syncStatus("The sheet returned an error"+(res&&res.error?": "+res.error:"")+".", true); return; }
+      var items=res.items||[];
+      if(!items.length){ syncStatus("No saved schedules in the sheet yet — use “Save to sheet”.", false); return; }
+      syncStatus(items.length+" saved schedule"+(items.length!==1?"s":"")+" — pick one to load:", false);
+      var el=$("sync-list"); el.__items=items; el.__url=url;
+      el.innerHTML=items.map(function(it,i){ return '<div class="load-pick"><span><b>'+esc(it.name)+'</b>'+(it.updated?' · <span class="mini">'+esc(String(it.updated).slice(0,10))+'</span>':'')+'</span><span style="display:flex;gap:6px"><button type="button" class="btn btn-soft sync-load-btn" data-i="'+i+'">Load</button><button type="button" class="btn-icon sync-del-btn" data-i="'+i+'" title="Delete from sheet" aria-label="Delete">&times;</button></span></div>'; }).join("");
+      el.hidden=false;
+    }).catch(function(e){ syncStatus(syncErr(e), true); });
+  }
+
+  // ---------- events ----------
+  function bindInputs(){
+    $("load-select").addEventListener("change", function(e){ if(e.target.value) loadSchedule(e.target.value); });
+    $("btn-clear").addEventListener("click", clearSchedule);
+    $("btn-save-code").addEventListener("click", copySaveCode);
+    $("btn-load-code").addEventListener("click", loadFromCode);
+    $("load-picker").addEventListener("click", function(e){
+      var b=e.target.closest(".load-pick-btn"); if(!b) return;
+      var codes=parseCodes($("load-code").value), o=codes[+b.getAttribute("data-idx")]; if(o) applyLoadedSchedule(o);
+    });
+    $("btn-sync-save").addEventListener("click", syncSave);
+    $("btn-sync-load").addEventListener("click", syncLoad);
+    $("sync-list").addEventListener("click", function(e){
+      var el=$("sync-list"), items=el.__items||[], url=el.__url;
+      var lb=e.target.closest(".sync-load-btn");
+      if(lb){ var it=items[+lb.getAttribute("data-i")]; var codes=parseCodes(it.code||""); if(codes[0]) applyLoadedSchedule(codes[0]); else toast("That saved row isn’t a valid schedule code."); return; }
+      var db=e.target.closest(".sync-del-btn");
+      if(db){ var it2=items[+db.getAttribute("data-i")]; if(!confirm("Delete “"+it2.name+"” from the sheet?")) return; syncStatus("Deleting “"+it2.name+"”…", false); formPost(url, {action:"delete", name:it2.name, token:syncSecret()}).then(function(){ syncLoad(); }); }
+    });
+    $("sync-url").addEventListener("input", function(){ var u=loadUI(); u.syncUrl=$("sync-url").value; saveUI(u); });
+    $("sync-secret").addEventListener("input", function(){ var u=loadUI(); u.syncSecret=$("sync-secret").value; saveUI(u); });
+
+    $("f-course").addEventListener("change", function(e){
+      var v=e.target.value; armed=null;
+      if(v==="__new__"){ state.course="__new__"; } else if(v){ state.course=v; state.title=v; syncInputs(); }
+      renderChips(); save();
+    });
+    $("f-title").addEventListener("input", function(e){ state.title=e.target.value; save(); if(previewOpen) renderPreview(); });
+    $("f-sem").addEventListener("input", function(e){ state.semester=e.target.value; save(); if(previewOpen) renderPreview(); });
+    $("f-start").addEventListener("change", function(e){ state.start=e.target.value; renderGrid(); renderChips(); save(); });
+    $("f-end").addEventListener("change", function(e){ state.end=e.target.value; renderGrid(); renderChips(); save(); });
+
+    $("day-toggles").addEventListener("click", function(e){
+      var b=e.target.closest(".day-toggle"); if(!b) return;
+      var d=+b.getAttribute("data-day"); if(state.days[d]) delete state.days[d]; else state.days[d]=true;
+      renderDays(); renderGrid(); renderChips(); save();
+    });
+
+    // exams & reviews
+    $("btn-gen-assess").addEventListener("click", function(){
+      state.examCount=parseInt($("exam-count").value,10)||0; renderChips(); renderGrid(); save();
+      toast(state.examCount ? ("Generated "+state.examCount+" exam"+(state.examCount!==1?"s":"")+(state.reviewsBeforeExams?" + reviews":"")) : "No exams generated");
+    });
+    $("btn-reviews").addEventListener("click", function(){
+      state.reviewsBeforeExams=!state.reviewsBeforeExams;
+      $("btn-reviews").setAttribute("aria-pressed", state.reviewsBeforeExams?"true":"false");
+      $("btn-reviews").classList.toggle("on", state.reviewsBeforeExams);
+      renderChips(); renderGrid(); save();
+    });
+    $("btn-reminders").addEventListener("click", function(){
+      state.chapterReminders=!state.chapterReminders;
+      $("btn-reminders").setAttribute("aria-pressed", state.chapterReminders?"true":"false");
+      $("btn-reminders").classList.toggle("on", state.chapterReminders);
+      applyChapterReminders(); renderGrid(); renderChips(); save(); if(previewOpen) renderPreview();
+      toast(state.chapterReminders ? "Chapter-quiz reminders added under each exam" : "Chapter-quiz reminders removed");
+    });
+    $("exam-count").addEventListener("change", function(){ state.examCount=parseInt($("exam-count").value,10)||0; renderChips(); renderGrid(); save(); });
+
+    // chip drag + tap-to-arm (delegated at document level)
+    document.addEventListener("dragstart", function(e){
+      var c=e.target.closest ? e.target.closest(".chip-btn") : null; if(!c) return;
+      draggingLec={name:c.dataset.name, days:+c.dataset.days||1}; draggingCellIso=null;
+      try{ e.dataTransfer.effectAllowed="copy"; e.dataTransfer.setData("text/plain", draggingLec.name); }catch(_){}
+      c.classList.add("dragging"); document.body.classList.add("dnd");
+    });
+    document.addEventListener("dragend", function(e){
+      var c=e.target.closest ? e.target.closest(".chip-btn") : null; if(c) c.classList.remove("dragging");
+      document.body.classList.remove("dnd"); draggingLec=null; draggingCellIso=null;
+      var dc=document.querySelector("td.dragging-cell"); if(dc) dc.classList.remove("dragging-cell");
+    });
+    document.addEventListener("click", function(e){
+      var c=e.target.closest ? e.target.closest(".chip-btn") : null; if(!c) return;
+      var name=c.dataset.name, days=+c.dataset.days||1;
+      armed=(armed && armed.name===name) ? null : {name:name, days:days}; renderChips();
+    });
+
+    // grid: chip drops, cell↔cell moves, tap-to-place, double-click editing
+    var grid=$("grid-wrap");
+    grid.addEventListener("dragstart", function(e){
+      var td=e.target.closest ? e.target.closest("td.cell") : null;
+      if(!td || !td.dataset.iso || td.getAttribute("draggable")!=="true") return;
+      draggingCellIso=td.dataset.iso; draggingLec=null;
+      try{ e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain", state.topics[draggingCellIso]||""); }catch(_){}
+      td.classList.add("dragging-cell"); document.body.classList.add("dnd");
+    });
+    grid.addEventListener("dragover", function(e){
+      var td=e.target.closest ? e.target.closest("td.cell") : null;
+      if(td && td.dataset.iso && !td.classList.contains("cell-empty") && !td.dataset.nc){ e.preventDefault(); e.dataTransfer.dropEffect=draggingCellIso?"move":"copy"; td.classList.add("drop-hover"); }
+    });
+    grid.addEventListener("dragleave", function(e){ var td=e.target.closest?e.target.closest("td.cell"):null; if(td) td.classList.remove("drop-hover"); });
+    grid.addEventListener("drop", function(e){
+      document.body.classList.remove("dnd");
+      var td=e.target.closest?e.target.closest("td.cell"):null;
+      if(td){ td.classList.remove("drop-hover");
+        if(td.dataset.iso && !td.classList.contains("cell-empty") && !td.dataset.nc){
+          e.preventDefault();
+          if(draggingCellIso){ if(draggingCellIso!==td.dataset.iso) swapCells(draggingCellIso, td.dataset.iso); }
+          else { var lec=draggingLec; if(!lec){ var nm=e.dataTransfer.getData("text/plain"); if(nm) lec={name:nm,days:1}; } if(lec) placeLecture(td.dataset.iso, lec); }
+        }
+      }
+      draggingLec=null; draggingCellIso=null;
+      var dc=grid.querySelector("td.dragging-cell"); if(dc) dc.classList.remove("dragging-cell");
+    });
+    var placeFromEvent=function(e){
+      if(!armed) return;
+      var td=e.target.closest?e.target.closest("td.cell"):null;
+      if(!td||!td.dataset.iso||td.classList.contains("cell-empty")||td.dataset.nc) return;
+      e.preventDefault(); var lec=armed; armed=null; placeLecture(td.dataset.iso, lec);
+    };
+    grid.addEventListener("mousedown", placeFromEvent, true);
+    grid.addEventListener("touchstart", placeFromEvent, {capture:true, passive:false});
+    grid.addEventListener("dblclick", function(e){
+      var td=e.target.closest?e.target.closest("td.cell"):null;
+      if(!td || !td.dataset.iso || td.classList.contains("cell-empty")) return;
+      startCellEdit(td);
+    });
+
+    // lecture actions
+    $("btn-autofill").addEventListener("click", autoFill);
+    $("btn-import").addEventListener("click", function(){ toggleImport(); });
+    $("imp-save").addEventListener("click", saveImport);
+    $("imp-cancel").addEventListener("click", function(){ toggleImport(false); });
+
+    // no-class
+    $("nc-add").addEventListener("click", addNoClass);
+    $("nc-label").addEventListener("keydown", function(e){ if(e.key==="Enter") addNoClass(); });
+    $("nc-multi").addEventListener("click", function(){
+      ncMultiOn=!ncMultiOn;
+      $("nc-multi").setAttribute("aria-pressed", ncMultiOn?"true":"false");
+      $("nc-multi").classList.toggle("on", ncMultiOn);
+      $("nc-count").style.display = ncMultiOn ? "" : "none";
+      if(ncMultiOn) $("nc-count").focus();
+    });
+    $("noclass-list").addEventListener("input", function(e){
+      var row=e.target.closest(".row-item"); if(!row) return;
+      var id=+row.getAttribute("data-id"), n=state.noClass.filter(function(x){ return x.id===id; })[0]; if(!n) return;
+      if(e.target.classList.contains("nc-d")){ n.date=e.target.value; clearHolidayTopics(); }
+      if(e.target.classList.contains("nc-l")) n.label=e.target.value;
+      if(e.target.classList.contains("nc-days")){ n.days=Math.max(1, parseInt(e.target.value,10)||1); clearHolidayTopics(); }
+      renderGrid(); renderChips(); save();
+    });
+    $("noclass-list").addEventListener("click", function(e){
+      var b=e.target.closest(".nc-del"); if(!b) return;
+      var id=+b.getAttribute("data-id"); state.noClass=state.noClass.filter(function(x){ return x.id!==id; });
+      renderNoClass(); renderGrid(); renderChips(); save();
+    });
+
+    // extras
+    $("extra-add").addEventListener("click", function(){ state.extras.push({id:uid++, heading:"", content:""}); renderExtras(); save(); });
+    $("extras-list").addEventListener("input", function(e){
+      var row=e.target.closest(".extra-item"); if(!row) return;
+      var id=+row.getAttribute("data-id"), x=state.extras.filter(function(v){ return v.id===id; })[0]; if(!x) return;
+      if(e.target.classList.contains("ex-h")) x.heading=e.target.value;
+      if(e.target.classList.contains("ex-c")){ x.content=e.target.value; autosize(e.target); }
+      save(); if(previewOpen) renderPreview();
+    });
+    $("extras-list").addEventListener("click", function(e){
+      var b=e.target.closest(".ex-del"); if(!b) return;
+      var id=+b.getAttribute("data-id"); state.extras=state.extras.filter(function(v){ return v.id!==id; });
+      renderExtras(); save(); if(previewOpen) renderPreview();
+    });
+
+    // action bar
+    $("btn-copy").addEventListener("click", copyTable);
+    $("btn-doc").addEventListener("click", downloadDoc);
+    $("btn-html").addEventListener("click", downloadHtml);
+    $("btn-preview").addEventListener("click", togglePreview);
+
+    document.addEventListener("keydown", function(e){ if(e.key==="Escape" && armed!=null){ armed=null; renderChips(); } });
+  }
+
+  function syncInputs(){ $("f-title").value=state.title; $("f-sem").value=state.semester; $("f-start").value=state.start; $("f-end").value=state.end; }
+  function syncAssessControls(){
+    $("exam-count").value = state.examCount ? String(state.examCount) : "1";
+    $("btn-reviews").setAttribute("aria-pressed", state.reviewsBeforeExams?"true":"false");
+    $("btn-reviews").classList.toggle("on", state.reviewsBeforeExams);
+    $("btn-reminders").setAttribute("aria-pressed", state.chapterReminders?"true":"false");
+    $("btn-reminders").classList.toggle("on", state.chapterReminders);
+  }
+  function renderAll(){ renderLoadSelect(); renderCourseSelect(); syncInputs(); syncAssessControls(); renderDays(); renderChips(); renderNoClass(); renderExtras(); renderGrid(); if(previewOpen) renderPreview(); }
+
+  function clearSchedule(){
+    if(!confirm("Clear the current schedule? (Your saved lecture lists are kept.)")) return;
+    var courses=state.courses;
+    state={ course:"", title:"", semester:"", days:{}, start:"", end:"", noClass:[], extras:[], topics:{}, courses:courses, examCount:0, reviewsBeforeExams:false, chapterReminders:false };
+    armed=null; ncMultiOn=false; renderAll(); save(); status(""); toast("Schedule cleared");
+  }
+
+  // ---------- collapsible panels (state persisted separately from the schedule) ----------
+  function loadUI(){ try{ return JSON.parse(localStorage.getItem("semester-grid:ui")||"{}"); }catch(e){ return {}; } }
+  function saveUI(u){ try{ localStorage.setItem("semester-grid:ui", JSON.stringify(u)); }catch(e){} }
+  function initCollapsibles(){
+    var collapsed=(loadUI().collapsed)||{};
+    document.querySelectorAll(".panel.collapsible").forEach(function(p){
+      var id=p.getAttribute("data-panel"), head=p.querySelector(".panel-head");
+      if(collapsed[id]) p.classList.add("collapsed");
+      if(!head) return;
+      head.setAttribute("aria-expanded", p.classList.contains("collapsed")?"false":"true");
+      head.addEventListener("click", function(){
+        p.classList.toggle("collapsed");
+        var open=!p.classList.contains("collapsed");
+        head.setAttribute("aria-expanded", open?"true":"false");
+        var u=loadUI(); u.collapsed=u.collapsed||{}; u.collapsed[id]=!open; saveUI(u);
+      });
+    });
+  }
+
+  // ---------- init ----------
+  load();
+  renderAll();
+  bindInputs();
+  initCollapsibles();
+  (function(){ var u=loadUI(); if(u.syncUrl) $("sync-url").value=u.syncUrl; if(u.syncSecret) $("sync-secret").value=u.syncSecret; })();
+})();
+</script>
